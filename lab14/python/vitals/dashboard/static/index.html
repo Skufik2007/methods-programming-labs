@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Мониторинг пациентов</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Мониторинг пациентов</h1>
+    <span id="conn" class="badge off">нет связи</span>
+    <span id="updated" class="muted"></span>
+  </header>
+  <main>
+    <section class="panel">
+      <h2>Пациенты</h2>
+      <div class="scroll">
+        <table id="patients">
+          <thead>
+            <tr><th>Пациент</th><th>ЧСС, уд/мин</th><th>SpO2, %</th><th>Темп., °C</th><th>Давление, мм рт. ст.</th><th>Статус</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Лента тревог</h2>
+      <ul id="alerts" class="feed"></ul>
+    </section>
+    <section class="panel wide">
+      <h2>График: <span id="sel">пациент не выбран</span></h2>
+      <label>Показатель
+        <select id="metric">
+          <option value="heart_rate">ЧСС</option>
+          <option value="spo2">SpO2</option>
+          <option value="temperature">Температура</option>
+          <option value="systolic_bp">Систолическое давление</option>
+          <option value="diastolic_bp">Диастолическое давление</option>
+          <option value="resp_rate">Частота дыхания</option>
+        </select>
+      </label>
+      <canvas id="chart" width="900" height="260"></canvas>
+    </section>
+  </main>
+  <script src="/static/chart.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

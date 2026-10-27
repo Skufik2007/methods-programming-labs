@@ -1,0 +1,43 @@
+# Эмулятор датчиков. Для нагрузочной проверки HPA в CI его DEVICES/PERIOD_MS патчатся через kubectl set env.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sensorsim
+  namespace: vitals
+  labels: {app: sensorsim}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: sensorsim}
+  template:
+    metadata:
+      labels: {app: sensorsim}
+    spec:
+      containers:
+        - name: sensorsim
+          image: vitals-go:ci
+          imagePullPolicy: IfNotPresent  # образ загружается в kind командой kind load docker-image
+          command: ["sensorsim"]
+          env:
+            - {name: ADDR, value: ":8080"}
+            - {name: DEVICES, value: "50"}
+            - {name: PERIOD_MS, value: "1000"}
+            - {name: SEED, value: "14"}
+          ports:
+            - {name: http, containerPort: 8080}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 3
+          resources:
+            requests: {cpu: 200m, memory: 128Mi}
+            limits: {memory: 1Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sensorsim
+  namespace: vitals
+spec:
+  selector: {app: sensorsim}
+  ports:
+    - {name: http, port: 8080, targetPort: http}

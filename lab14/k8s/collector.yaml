@@ -1,0 +1,80 @@
+# Сборщик. Реплик может быть несколько: каждая регистрируется в etcd, HRW делит устройства без настройки.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  namespace: vitals
+  labels: {app: collector}
+spec:
+  replicas: 1  # дальше управляет HPA
+  selector:
+    matchLabels: {app: collector}
+  template:
+    metadata:
+      labels: {app: collector}
+    spec:
+      terminationGracePeriodSeconds: 30  # SHUTDOWN_TIMEOUT сборщика 15 с
+      initContainers:
+        # без этого сборщик при старте раньше etcd завершался бы с ошибкой и уходил в CrashLoopBackOff
+        - name: wait-deps
+          image: vitals-go:ci
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              for u in http://etcd:2379/health http://nats:8222/healthz http://sensorsim:8080/healthz; do
+                until wget -q -O /dev/null "$u"; do echo "жду $u"; sleep 2; done
+              done
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+      containers:
+        - name: collector
+          image: vitals-go:ci
+          imagePullPolicy: IfNotPresent
+          command: ["collector"]
+          env:
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: POD_IP
+              valueFrom: {fieldRef: {fieldPath: status.podIP}}
+            # Kubernetes подставляет $(VAR) только из переменных, объявленных выше в этом списке
+            - {name: COLLECTOR_ID, value: "$(POD_NAME)"}
+            - {name: FLIGHT_ADVERTISE, value: "$(POD_IP):8815"}
+            - {name: SIM_URL, value: "http://sensorsim:8080"}
+            - {name: COORD, value: etcd}
+            - {name: ETCD_ENDPOINTS, value: "etcd:2379"}
+            - {name: NATS_URL, value: "nats://nats:4222"}
+            # flight не включаем: кольцевой буфер в памяти под нагрузкой HPA-теста только раздул бы RSS
+            - {name: SINKS, value: "files,nats"}
+            - {name: EMIT, value: agg}
+            - {name: OUT_DIR, value: /data}
+            - {name: STATUS_ADDR, value: ":9100"}
+            - {name: POLL_INTERVAL, value: 500ms}
+            - {name: WINDOW, value: 10s}
+          ports:
+            - {name: status, containerPort: 9100}
+            - {name: flight, containerPort: 8815}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+          readinessProbe:
+            httpGet: {path: /status, port: status}
+            periodSeconds: 3
+            failureThreshold: 10
+          resources:
+            # requests.cpu обязателен: HPA считает утилизацию в процентах от него
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 1Gi}
+      volumes:
+        - {name: data, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: vitals
+spec:
+  selector: {app: collector}
+  ports:
+    - {name: status, port: 9100, targetPort: status}
+    - {name: flight, port: 8815, targetPort: flight}

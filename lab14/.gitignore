@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+.env
+
+# Go
+go/bin/
+*.exe
+*.test
+coverage.out
+
+# Rust
+rust/**/target/
+*.pyd
+*.so
+
+# Данные и локальный запуск
+data/
+.run/
+
+# IDE
+.vscode/
+.idea/
+
+# Сборка колеса setuptools (тест упаковки)
+build/

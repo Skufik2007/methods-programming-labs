@@ -1,0 +1,44 @@
+# NATS с JetStream; хранилище потока — emptyDir.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nats
+  namespace: vitals
+  labels: {app: nats}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: nats}
+  template:
+    metadata:
+      labels: {app: nats}
+    spec:
+      containers:
+        - name: nats
+          image: nats:2.14-alpine
+          args: ["-js", "-sd", "/nats-data", "-m", "8222"]
+          ports:
+            - {name: client, containerPort: 4222}
+            - {name: monitor, containerPort: 8222}
+          volumeMounts:
+            - {name: data, mountPath: /nats-data}
+          readinessProbe:
+            httpGet: {path: /healthz, port: monitor}
+            periodSeconds: 3
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 512Mi}
+      volumes:
+        - {name: data, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  namespace: vitals
+spec:
+  selector: {app: nats}
+  ports:
+    - {name: client, port: 4222, targetPort: client}
+    - {name: monitor, port: 8222, targetPort: monitor}

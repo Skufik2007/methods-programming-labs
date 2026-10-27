@@ -1,0 +1,48 @@
+{
+  "scenario": "raw_vs_agg",
+  "env": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "cpu_count": 12,
+    "time": "2026-10-13T13:20:51Z"
+  },
+  "params": {
+    "quick": false,
+    "devices": 50,
+    "windows": [
+      10,
+      60
+    ],
+    "collector": "go"
+  },
+  "cases": [
+    {
+      "collector": "go",
+      "devices": 50,
+      "window_s": 10,
+      "duration_s": 35,
+      "exit_code": 0,
+      "raw_records": 11978,
+      "agg_records": 1400,
+      "raw_bytes": 1793004,
+      "agg_bytes": 361838,
+      "records_ratio": 8.555714285714286,
+      "bytes_ratio": 4.955267274305076,
+      "median_readings_per_agg_row": 10.0
+    },
+    {
+      "collector": "go",
+      "devices": 50,
+      "window_s": 60,
+      "duration_s": 85,
+      "exit_code": 0,
+      "raw_records": 29536,
+      "agg_records": 700,
+      "raw_bytes": 4429621,
+      "agg_bytes": 186914,
+      "records_ratio": 42.19428571428571,
+      "bytes_ratio": 23.69871170698824,
+      "median_readings_per_agg_row": 42.5
+    }
+  ]
+}

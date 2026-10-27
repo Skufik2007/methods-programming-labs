@@ -1,0 +1,31 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: collector
+  namespace: vitals
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: collector
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 60}
+  behavior:
+    scaleUp:
+      # быстрый рост: без окна стабилизации, до +100% или +2 пода за 15 с
+      stabilizationWindowSeconds: 0
+      selectPolicy: Max
+      policies:
+        - {type: Percent, value: 100, periodSeconds: 15}
+        - {type: Pods, value: 2, periodSeconds: 15}
+    scaleDown:
+      # медленное уменьшение: 5 минут стабилизации и не больше одного пода в минуту
+      stabilizationWindowSeconds: 300
+      selectPolicy: Min
+      policies:
+        - {type: Pods, value: 1, periodSeconds: 60}

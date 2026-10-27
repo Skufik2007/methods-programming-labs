@@ -1,0 +1,195 @@
+{
+  "scenario": "transport",
+  "env": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "cpu_count": 12,
+    "time": "2026-10-13T13:18:49Z"
+  },
+  "params": {
+    "quick": false,
+    "devices": 300,
+    "seconds": 40.0,
+    "repeats": 3
+  },
+  "runs": [
+    {
+      "rows": 82340,
+      "bytes": 12327301,
+      "transfer_s": 0.010858999999982188,
+      "load_s": 0.027052600000388338,
+      "kind": "raw",
+      "format": "jsonl",
+      "repeat": 0,
+      "bytes_per_row": 149.71218119990283,
+      "total_us_per_row": 0.46042749575383196
+    },
+    {
+      "rows": 84340,
+      "bytes": 3921328,
+      "transfer_s": 0.06501550000029965,
+      "load_s": 0.0689394999999422,
+      "kind": "raw",
+      "format": "flight",
+      "repeat": 0,
+      "bytes_per_row": 46.49428503675599,
+      "total_us_per_row": 1.5882736542594482
+    },
+    {
+      "rows": 6915,
+      "bytes": 1787425,
+      "transfer_s": 0.0068811000001005596,
+      "load_s": 0.005375400000048103,
+      "kind": "agg",
+      "format": "jsonl",
+      "repeat": 0,
+      "bytes_per_row": 258.48517715112075,
+      "total_us_per_row": 1.7724511930800668
+    },
+    {
+      "rows": 6915,
+      "bytes": 621248,
+      "transfer_s": 0.016246099999989383,
+      "load_s": 0.001312800000050629,
+      "kind": "agg",
+      "format": "flight",
+      "repeat": 0,
+      "bytes_per_row": 89.8406362979031,
+      "total_us_per_row": 2.539248011574839
+    },
+    {
+      "rows": 84340,
+      "bytes": 12627583,
+      "transfer_s": 0.010989000000336091,
+      "load_s": 0.0169039000002158,
+      "kind": "raw",
+      "format": "jsonl",
+      "repeat": 1,
+      "bytes_per_row": 149.72235001185678,
+      "total_us_per_row": 0.33071970595864225
+    },
+    {
+      "rows": 84340,
+      "bytes": 3921328,
+      "transfer_s": 0.052963899999667774,
+      "load_s": 0.004396100000121805,
+      "kind": "raw",
+      "format": "flight",
+      "repeat": 1,
+      "bytes_per_row": 46.49428503675599,
+      "total_us_per_row": 0.6801043395754042
+    },
+    {
+      "rows": 6915,
+      "bytes": 1787425,
+      "transfer_s": 0.0005668000003424822,
+      "load_s": 0.0034538999998403597,
+      "kind": "agg",
+      "format": "jsonl",
+      "repeat": 1,
+      "bytes_per_row": 258.48517715112075,
+      "total_us_per_row": 0.5814461316244168
+    },
+    {
+      "rows": 6915,
+      "bytes": 621248,
+      "transfer_s": 0.015226599999550672,
+      "load_s": 0.0010697999996409635,
+      "kind": "agg",
+      "format": "flight",
+      "repeat": 1,
+      "bytes_per_row": 89.8406362979031,
+      "total_us_per_row": 2.3566738972077563
+    },
+    {
+      "rows": 84340,
+      "bytes": 12627583,
+      "transfer_s": 0.003655299999991257,
+      "load_s": 0.015007500000137952,
+      "kind": "raw",
+      "format": "jsonl",
+      "repeat": 2,
+      "bytes_per_row": 149.72235001185678,
+      "total_us_per_row": 0.22128053118483768
+    },
+    {
+      "rows": 84340,
+      "bytes": 3921328,
+      "transfer_s": 0.029131499999493826,
+      "load_s": 0.004752599999847007,
+      "kind": "raw",
+      "format": "flight",
+      "repeat": 2,
+      "bytes_per_row": 46.49428503675599,
+      "total_us_per_row": 0.4017559876611434
+    },
+    {
+      "rows": 6915,
+      "bytes": 1787425,
+      "transfer_s": 0.0005394999998316052,
+      "load_s": 0.003540199999406468,
+      "kind": "agg",
+      "format": "jsonl",
+      "repeat": 2,
+      "bytes_per_row": 258.48517715112075,
+      "total_us_per_row": 0.5899783079158457
+    },
+    {
+      "rows": 6915,
+      "bytes": 621248,
+      "transfer_s": 0.017861899999843445,
+      "load_s": 0.0012164999998276471,
+      "kind": "agg",
+      "format": "flight",
+      "repeat": 2,
+      "bytes_per_row": 89.8406362979031,
+      "total_us_per_row": 2.7589877078338527
+    }
+  ],
+  "summary": [
+    {
+      "kind": "raw",
+      "format": "jsonl",
+      "runs": 3,
+      "rows": 84340.0,
+      "bytes": 12627583.0,
+      "bytes_per_row": 149.72235001185678,
+      "transfer_s": 0.010858999999982188,
+      "load_s": 0.0169039000002158,
+      "total_us_per_row": 0.33071970595864225
+    },
+    {
+      "kind": "raw",
+      "format": "flight",
+      "runs": 3,
+      "rows": 84340.0,
+      "bytes": 3921328.0,
+      "bytes_per_row": 46.49428503675599,
+      "transfer_s": 0.052963899999667774,
+      "load_s": 0.004752599999847007,
+      "total_us_per_row": 0.6801043395754042
+    },
+    {
+      "kind": "agg",
+      "format": "jsonl",
+      "runs": 3,
+      "rows": 6915.0,
+      "bytes": 1787425.0,
+      "bytes_per_row": 258.48517715112075,
+      "transfer_s": 0.0005668000003424822,
+      "load_s": 0.003540199999406468,
+      "total_us_per_row": 0.5899783079158457
+    },
+    {
+      "kind": "agg",
+      "format": "flight",
+      "runs": 3,
+      "rows": 6915.0,
+      "bytes": 621248.0,
+      "bytes_per_row": 89.8406362979031,
+      "transfer_s": 0.016246099999989383,
+      "load_s": 0.0012164999998276471,
+      "total_us_per_row": 2.539248011574839
+    }
+  ]
+}

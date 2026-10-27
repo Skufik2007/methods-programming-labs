@@ -1,0 +1,22 @@
+# Контекст сборки — корень репозитория. Исключаем всё, что не нужно образам.
+.git
+.github
+.venv
+.pytest_cache
+.ruff_cache
+.run
+**/__pycache__
+**/*.pyc
+**/target
+data
+reports
+prompts
+docs
+tests
+*.md
+.coverage
+coverage.xml
+htmlcov
+*.exe
+*.test
+# README.md нужен только людям; pyproject.toml и исходники остаются в контексте

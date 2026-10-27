@@ -1,0 +1,23 @@
+{
+  "scenario": "validation",
+  "env": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "cpu_count": 12,
+    "time": "2026-10-13T13:20:53Z"
+  },
+  "rows": 1000000,
+  "repeats": 7,
+  "rust_available": true,
+  "polars_s": 0.09398500000042986,
+  "rust_s": 0.06918450000011944,
+  "speedup": 1.3584690212441748,
+  "results_equal": true,
+  "code_counts": {
+    "0": 936309,
+    "1": 19961,
+    "2": 19842,
+    "3": 5017,
+    "4": 18871
+  }
+}

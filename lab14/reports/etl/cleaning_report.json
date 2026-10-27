@@ -1,0 +1,56 @@
+[
+  {
+    "step": "coerce_types",
+    "rows_before": 159473,
+    "rows_after": 159473,
+    "affected": 0,
+    "note": "удалены строки с нераспознанными ts/seq/device_id"
+  },
+  {
+    "step": "drop_duplicates",
+    "rows_before": 159473,
+    "rows_after": 159385,
+    "affected": 88,
+    "note": "ключ (device_id, seq), keep=first"
+  },
+  {
+    "step": "normalize_unit",
+    "rows_before": 159385,
+    "rows_after": 159385,
+    "affected": 3134,
+    "note": "регистр/пробелы/пустая единица -> каноническая"
+  },
+  {
+    "step": "drop_future",
+    "rows_before": 159385,
+    "rows_after": 157802,
+    "affected": 1583,
+    "note": "ts нарушает монотонность seq или больше максимума набора (допуск 5 с)"
+  },
+  {
+    "step": "validate",
+    "rows_before": 157802,
+    "rows_after": 154702,
+    "affected": 3100,
+    "note": "vitals.validation; по причинам: {'out_of_range': 3100, 'unknown_metric': 0, 'bad_unit': 0}",
+    "detail": {
+      "out_of_range": 3100,
+      "unknown_metric": 0,
+      "bad_unit": 0
+    }
+  },
+  {
+    "step": "drop_missing",
+    "rows_before": 154702,
+    "rows_after": 151497,
+    "affected": 3205,
+    "note": "value is null/NaN"
+  },
+  {
+    "step": "fill_battery",
+    "rows_before": 151497,
+    "rows_after": 151497,
+    "affected": 1530,
+    "note": "forward_fill по устройству; осталось пропусков: 0"
+  }
+]

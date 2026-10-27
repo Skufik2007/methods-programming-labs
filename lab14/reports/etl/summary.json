@@ -1,0 +1,187 @@
+{
+  "raw": {
+    "rows": 159473,
+    "schema": {
+      "device_id": "String",
+      "patient_id": "String",
+      "seq": "Int64",
+      "ts": "String",
+      "metric": "String",
+      "value": "Float64",
+      "unit": "String",
+      "battery": "Int64"
+    },
+    "nulls": {
+      "device_id": 0,
+      "patient_id": 0,
+      "seq": 0,
+      "ts": 0,
+      "metric": 0,
+      "value": 3226,
+      "unit": 0,
+      "battery": 1604
+    },
+    "head": [
+      {
+        "device_id": "dev-0001",
+        "patient_id": "p-0001",
+        "seq": 1,
+        "ts": "2026-10-13T13:22:04.246Z",
+        "metric": "heart_rate",
+        "value": 75.0,
+        "unit": "bpm",
+        "battery": 50
+      },
+      {
+        "device_id": "dev-0001",
+        "patient_id": "p-0001",
+        "seq": 2,
+        "ts": "2026-10-13T13:22:04.274Z",
+        "metric": "spo2",
+        "value": 98.5,
+        "unit": "%",
+        "battery": 50
+      },
+      {
+        "device_id": "dev-0001",
+        "patient_id": "p-0001",
+        "seq": 3,
+        "ts": "2026-10-13T13:22:04.303Z",
+        "metric": "temperature",
+        "value": 36.59,
+        "unit": "C",
+        "battery": 50
+      },
+      {
+        "device_id": "dev-0001",
+        "patient_id": "p-0001",
+        "seq": 4,
+        "ts": "2026-10-13T13:22:04.331Z",
+        "metric": "systolic_bp",
+        "value": 140.0,
+        "unit": "mmHg",
+        "battery": 50
+      },
+      {
+        "device_id": "dev-0001",
+        "patient_id": "p-0001",
+        "seq": 5,
+        "ts": "2026-10-13T13:22:04.360Z",
+        "metric": "diastolic_bp",
+        "value": 67.0,
+        "unit": "mmHg",
+        "battery": 50
+      }
+    ]
+  },
+  "agg": {
+    "rows": 3500,
+    "schema": {
+      "window_start": "String",
+      "window_end": "String",
+      "device_id": "String",
+      "patient_id": "String",
+      "metric": "String",
+      "count": "Int64",
+      "invalid": "Int64",
+      "sum": "Float64",
+      "min": "Float64",
+      "max": "Float64",
+      "mean": "Float64",
+      "last": "Float64",
+      "collector_id": "String"
+    },
+    "nulls": {
+      "window_start": 0,
+      "window_end": 0,
+      "device_id": 0,
+      "patient_id": 0,
+      "metric": 0,
+      "count": 0,
+      "invalid": 0,
+      "sum": 0,
+      "min": 0,
+      "max": 0,
+      "mean": 0,
+      "last": 0,
+      "collector_id": 0
+    },
+    "head": [
+      {
+        "window_start": "2026-10-13T13:22:00Z",
+        "window_end": "2026-10-13T13:22:10Z",
+        "device_id": "dev-0001",
+        "patient_id": "p-0001",
+        "metric": "diastolic_bp",
+        "count": 27,
+        "invalid": 2,
+        "sum": 1787.0,
+        "min": 65.0,
+        "max": 67.0,
+        "mean": 66.18518518518519,
+        "last": 65.0,
+        "collector_id": "collector-1"
+      },
+      {
+        "window_start": "2026-10-13T13:22:00Z",
+        "window_end": "2026-10-13T13:22:10Z",
+        "device_id": "dev-0001",
+        "patient_id": "p-0001",
+        "metric": "heart_rate",
+        "count": 28,
+        "invalid": 1,
+        "sum": 2147.0,
+        "min": 75.0,
+        "max": 78.0,
+        "mean": 76.67857142857143,
+        "last": 77.0,
+        "collector_id": "collector-1"
+      },
+      {
+        "window_start": "2026-10-13T13:22:00Z",
+        "window_end": "2026-10-13T13:22:10Z",
+        "device_id": "dev-0001",
+        "patient_id": "p-0001",
+        "metric": "resp_rate",
+        "count": 26,
+        "invalid": 3,
+        "sum": 442.0,
+        "min": 17.0,
+        "max": 17.0,
+        "mean": 17.0,
+        "last": 17.0,
+        "collector_id": "collector-1"
+      },
+      {
+        "window_start": "2026-10-13T13:22:00Z",
+        "window_end": "2026-10-13T13:22:10Z",
+        "device_id": "dev-0001",
+        "patient_id": "p-0001",
+        "metric": "spo2",
+        "count": 29,
+        "invalid": 0,
+        "sum": 2854.200000000001,
+        "min": 98.3,
+        "max": 98.6,
+        "mean": 98.42068965517245,
+        "last": 98.5,
+        "collector_id": "collector-1"
+      },
+      {
+        "window_start": "2026-10-13T13:22:00Z",
+        "window_end": "2026-10-13T13:22:10Z",
+        "device_id": "dev-0001",
+        "patient_id": "p-0001",
+        "metric": "steps",
+        "count": 27,
+        "invalid": 1,
+        "sum": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "last": 0.0,
+        "collector_id": "collector-1"
+      }
+    ]
+  }
+}
