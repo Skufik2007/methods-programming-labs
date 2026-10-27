@@ -1,0 +1,354 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Минимальные права GITHUB_TOKEN для всех заданий: только чтение репозитория.
+permissions:
+  contents: read
+
+# Новый коммит в той же ветке / PR отменяет ещё идущий прогон.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash # bash -eo pipefail: ошибка в любом звене конвейера роняет шаг
+
+env:
+  PYTHON_VERSION: "3.12"
+
+# Версии actions зафиксированы точными тегами (обновляйте через Dependabot, для максимальной защиты
+# цепочки поставок замените теги на SHA коммитов).
+# Зависимости ставятся из pyproject.toml: [project].dependencies + [project.optional-dependencies].dev.
+# `pip install .` не используется: в pyproject.toml нет [build-system], а в корне несколько каталогов верхнего уровня.
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python - <<'PY' > "$RUNNER_TEMP/requirements.txt"
+          import tomllib
+          project = tomllib.load(open("pyproject.toml", "rb"))["project"]
+          print(*project["dependencies"], *project["optional-dependencies"]["dev"], sep="\n")
+          PY
+          python -m pip install --upgrade pip
+          pip install -r "$RUNNER_TEMP/requirements.txt"
+
+      - name: ruff check
+        run: ruff check .
+
+      - name: ruff format --check
+        run: ruff format --check .
+
+  tests-sqlite:
+    name: Tests (SQLite)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python - <<'PY' > "$RUNNER_TEMP/requirements.txt"
+          import tomllib
+          project = tomllib.load(open("pyproject.toml", "rb"))["project"]
+          print(*project["dependencies"], *project["optional-dependencies"]["dev"], sep="\n")
+          PY
+          python -m pip install --upgrade pip
+          pip install -r "$RUNNER_TEMP/requirements.txt"
+
+      # TEST_DATABASE_URL не задан -> tests/conftest.py использует временный файл SQLite.
+      - name: pytest with coverage
+        run: pytest -ra --cov --cov-report=term-missing --cov-report=xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: coverage-sqlite
+          path: coverage.xml
+          if-no-files-found: error
+          retention-days: 7
+
+  tests-postgres:
+    name: Tests (PostgreSQL 16)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # Одноразовая БД внутри runner'а: вход без пароля, секретов в репозитории нет.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: clinic_test
+        ports:
+          - 5432:5432
+        # -h 127.0.0.1: во время инициализации PostgreSQL слушает только unix-сокет (см. docker-compose.yml).
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres -d clinic_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres@127.0.0.1:5432/clinic_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python - <<'PY' > "$RUNNER_TEMP/requirements.txt"
+          import tomllib
+          project = tomllib.load(open("pyproject.toml", "rb"))["project"]
+          print(*project["dependencies"], *project["optional-dependencies"]["dev"], sep="\n")
+          PY
+          python -m pip install --upgrade pip
+          pip install -r "$RUNNER_TEMP/requirements.txt"
+
+      - name: pytest with coverage (PostgreSQL)
+        run: pytest -ra --cov --cov-report=term-missing --cov-report=xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: coverage-postgres
+          path: coverage.xml
+          if-no-files-found: error
+          retention-days: 7
+
+  migrations:
+    name: Migrations (PostgreSQL 16)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: clinic_migrations
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres -d clinic_migrations"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres@127.0.0.1:5432/clinic_migrations
+      # Переменные клиента psql (шаги ниже проверяют БД напрямую).
+      PGHOST: 127.0.0.1
+      PGUSER: postgres
+      PGDATABASE: clinic_migrations
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python - <<'PY' > "$RUNNER_TEMP/requirements.txt"
+          import tomllib
+          project = tomllib.load(open("pyproject.toml", "rb"))["project"]
+          print(*project["dependencies"], *project["optional-dependencies"]["dev"], sep="\n")
+          PY
+          python -m pip install --upgrade pip
+          pip install -r "$RUNNER_TEMP/requirements.txt"
+
+      # Settings приложения требуют JWT_SECRET, хотя миграции его не используют.
+      # Значение случайное, одноразовое и скрыто в журнале.
+      - name: Generate a throwaway JWT_SECRET
+        run: |
+          secret="$(openssl rand -hex 32)"
+          echo "::add-mask::${secret}"
+          echo "JWT_SECRET=${secret}" >> "$GITHUB_ENV"
+
+      - name: alembic upgrade head
+        run: alembic upgrade head
+
+      - name: alembic check (схема БД == models.py)
+        run: alembic check
+
+      # Защита от пересечений существует только в БД (в моделях её нет), поэтому проверяем её напрямую.
+      - name: EXCLUDE constraint rejects overlapping appointments
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+          DO $$
+          DECLARE
+              u_id integer;
+              d_id integer;
+              p_id integer;
+          BEGIN
+              INSERT INTO users (email, password_hash, full_name, role)
+              VALUES ('ci-doctor@example.test', 'x', 'CI Doctor', 'doctor')
+              RETURNING id INTO u_id;
+              INSERT INTO doctors (user_id, specialty, cabinet, work_start, work_end, work_days)
+              VALUES (u_id, 'Therapist', '1', '09:00', '18:00', '[1,2,3,4,5]')
+              RETURNING id INTO d_id;
+              INSERT INTO patients (full_name, birth_date, policy_number)
+              VALUES ('CI Patient', '1990-01-01', '1234567890123456')
+              RETURNING id INTO p_id;
+
+              INSERT INTO appointments (doctor_id, patient_id, starts_at, ends_at, created_by)
+              VALUES (d_id, p_id, '2030-01-07 09:00+00', '2030-01-07 10:00+00', u_id);
+
+              -- Другое время начала: частичный уникальный индекс этого не видит, EXCLUDE - видит.
+              BEGIN
+                  INSERT INTO appointments (doctor_id, patient_id, starts_at, ends_at, created_by)
+                  VALUES (d_id, p_id, '2030-01-07 09:30+00', '2030-01-07 10:30+00', u_id);
+                  RAISE EXCEPTION 'EXCLUDE did not reject an overlapping appointment';
+              EXCEPTION WHEN exclusion_violation THEN
+                  RAISE NOTICE 'overlapping appointment rejected (SQLSTATE 23P01)';
+              END;
+
+              -- Смежный интервал [10:00, 11:00) допустим: интервалы полуоткрытые.
+              INSERT INTO appointments (doctor_id, patient_id, starts_at, ends_at, created_by)
+              VALUES (d_id, p_id, '2030-01-07 10:00+00', '2030-01-07 11:00+00', u_id);
+
+              -- Отменённая запись время не занимает.
+              INSERT INTO appointments (doctor_id, patient_id, starts_at, ends_at, status, created_by)
+              VALUES (d_id, p_id, '2030-01-07 09:00+00', '2030-01-07 10:00+00', 'cancelled', u_id);
+          END
+          $$;
+          ROLLBACK;
+          SQL
+
+      - name: alembic downgrade base
+        run: alembic downgrade base
+
+      - name: Downgrade removed everything (tables and btree_gist)
+        run: |
+          tables="$(psql -v ON_ERROR_STOP=1 --tuples-only --no-align --command \
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name <> 'alembic_version'")"
+          extensions="$(psql -v ON_ERROR_STOP=1 --tuples-only --no-align --command \
+            "SELECT count(*) FROM pg_extension WHERE extname = 'btree_gist'")"
+          echo "leftover tables: ${tables}, btree_gist installed: ${extensions}"
+          test "${tables}" = "0"
+          test "${extensions}" = "0"
+
+      - name: alembic upgrade head (again)
+        run: alembic upgrade head
+
+      - name: alembic check (again)
+        run: alembic check
+
+  docker:
+    name: Docker image and compose
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+
+      # Одноразовые секреты только для этого прогона; в журнале скрыты.
+      - name: Create .env with throwaway secrets
+        run: |
+          postgres_password="$(openssl rand -hex 24)"
+          jwt_secret="$(openssl rand -hex 32)"
+          echo "::add-mask::${postgres_password}"
+          echo "::add-mask::${jwt_secret}"
+          {
+            echo "POSTGRES_PASSWORD=${postgres_password}"
+            echo "JWT_SECRET=${jwt_secret}"
+          } > .env
+
+      - name: Validate docker-compose.yml
+        run: docker compose config --quiet
+
+      - name: Build the image
+        run: docker compose build
+
+      # up -d возвращается, когда db здорова, migrate завершилась с кодом 0 и app запущено;
+      # если миграция упала, команда завершится с ошибкой.
+      - name: Start the stack (db -> migrate -> app)
+        run: docker compose up --detach
+
+      - name: Wait until the app container is healthy (Dockerfile HEALTHCHECK)
+        run: |
+          container="$(docker compose ps --quiet app)"
+          status=""
+          for _ in $(seq 1 60); do
+            status="$(docker inspect --format '{{.State.Health.Status}}' "${container}")"
+            if [ "${status}" = "healthy" ]; then break; fi
+            sleep 2
+          done
+          echo "health status: ${status}"
+          test "${status}" = "healthy"
+
+      - name: GET /api/health
+        run: |
+          response="$(curl --fail --silent --show-error http://127.0.0.1:8000/api/health)"
+          echo "${response}"
+          test "${response}" = '{"status":"ok"}'
+
+      - name: alembic check inside the container
+        run: docker compose run --rm --no-deps -T migrate alembic check
+
+      - name: Seed demo data and log in
+        run: |
+          SEED_PASSWORD="$(openssl rand -hex 12)"
+          export SEED_PASSWORD
+          echo "::add-mask::${SEED_PASSWORD}"
+          docker compose run --rm --no-deps -T -e SEED_PASSWORD app python -m scripts.seed
+          token="$(curl --fail --silent --show-error --request POST http://127.0.0.1:8000/api/auth/login \
+            --header 'Content-Type: application/json' \
+            --data "{\"email\": \"admin@clinic.example\", \"password\": \"${SEED_PASSWORD}\"}" \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["access_token"])')"
+          echo "::add-mask::${token}"
+          curl --fail --silent --show-error --header "Authorization: Bearer ${token}" http://127.0.0.1:8000/api/doctors \
+            | python3 -c 'import json, sys; doctors = json.load(sys.stdin); assert len(doctors) == 4, doctors'
+
+      - name: Show container logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Tear down
+        if: always()
+        run: docker compose down --volumes --remove-orphans

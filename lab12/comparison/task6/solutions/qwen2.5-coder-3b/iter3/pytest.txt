@@ -1,0 +1,6 @@
+
+=================================== ERRORS ====================================
+____________ ERROR collecting comparison/task6/test_find_slots.py _____________
+E   NameError: name 'ZoneInfo' is not defined
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.41s

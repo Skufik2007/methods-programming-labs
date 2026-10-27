@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.db
+*.sqlite3
+.env
+
+# Node (расширение VS Code)
+node_modules/
+out/
+*.vsix
+
+# IDE
+.vscode/
+.idea/
+out-test/

@@ -1,0 +1,20 @@
+{
+  "T1": {
+    "seconds": 3.8,
+    "tokens": 237,
+    "tokens_per_s": 68.9,
+    "stopped_by_limit": false
+  },
+  "T2": {
+    "seconds": 7.8,
+    "tokens": 529,
+    "tokens_per_s": 68.9,
+    "stopped_by_limit": false
+  },
+  "T3": {
+    "seconds": 23.1,
+    "tokens": 1554,
+    "tokens_per_s": 67.8,
+    "stopped_by_limit": false
+  }
+}

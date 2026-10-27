@@ -1,0 +1,7 @@
+Python 3.12.10, SQLAlchemy 2.1.4, FastAPI 0.143.0, Pydantic 2.14.0, PyJWT 2.15.1
+[нет]   AsyncSession.upsert: AttributeError: type object 'AsyncSession' has no attribute 'upsert'
+[нет]   модуль sqlalchemy.ext.upsert: ModuleNotFoundError: No module named 'sqlalchemy.ext.upsert'
+[нет]   модуль fastapi.ratelimit: ModuleNotFoundError: No module named 'fastapi.ratelimit'
+[нет]   pydantic.types.SNILS: AttributeError: module 'pydantic.types' has no attribute 'SNILS'
+[нет]   jwt.revoke_token: AttributeError: module 'jwt' has no attribute 'revoke_token'
+[есть]  sqlalchemy.dialects.postgresql.insert(...).on_conflict_do_update

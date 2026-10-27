@@ -1,0 +1,40 @@
+# Всё, что не нужно образу, не попадает в контекст сборки: быстрее сборка и нет утечки секретов.
+
+# Секреты и локальные базы данных
+.env
+.env.*
+*.db
+*.sqlite
+*.sqlite3
+
+# Система контроля версий, CI, редакторы
+.git
+.gitignore
+.gitattributes
+.github
+.idea
+.vscode
+
+# Python: окружения, кэши, отчёты о покрытии
+.venv
+venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+coverage.xml
+htmlcov
+
+# Тесты, учебные материалы и документация (в образ не входят)
+tests
+prompts
+reports
+docs
+*.md
+
+# Файлы самой сборки
+Dockerfile
+docker-compose*.yml
+.dockerignore

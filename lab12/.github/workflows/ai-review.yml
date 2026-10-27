@@ -1,0 +1,123 @@
+name: AI Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Минимум прав. Для PR из форков токен всё равно будет только на чтение.
+permissions:
+  contents: read
+  pull-requests: write
+
+# Новый push в тот же PR отменяет предыдущий (ещё идущий) запуск.
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      MODEL: qwen2.5-coder:1.5b
+      MODEL_SLUG: qwen2.5-coder-1.5b
+      OLLAMA_URL: http://127.0.0.1:11434
+      # Таймаут одного запроса к модели (секунды): CPU-инференс медленный.
+      OLLAMA_TIMEOUT: "600"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.4.0
+        with:
+          python-version: "3.12"
+
+      - name: Build PR diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ai-review"
+          git diff --no-color --no-ext-diff "${BASE_SHA}...${HEAD_SHA}" -- . \
+            ':(exclude,glob)**/package-lock.json' \
+            ':(exclude,glob)**/*.lock' \
+            ':(exclude,glob)**/*.min.js' \
+            ':(exclude,glob)**/*.png' \
+            ':(exclude,glob)**/*.jpg' \
+            ':(exclude,glob)**/*.jpeg' \
+            ':(exclude,glob)**/*.gif' \
+            ':(exclude,glob)**/*.svg' \
+            ':(exclude,glob)**/*.webp' \
+            ':(exclude,glob)**/*.ico' \
+            > "$RUNNER_TEMP/ai-review/pr.diff"
+          wc -c "$RUNNER_TEMP/ai-review/pr.diff"
+
+      - name: Restore Ollama models cache
+        id: ollama-cache
+        uses: actions/cache@v4.2.0
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ env.MODEL_SLUG }}-v1
+
+      - name: Install Ollama
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          # Системный сервис нам не нужен: запускаем свой процесс с моделями в ~/.ollama/models
+          sudo systemctl stop ollama 2>/dev/null || true
+          echo "OLLAMA_MODELS=$HOME/.ollama/models" >> "$GITHUB_ENV"
+
+      - name: Start Ollama server
+        run: |
+          set -euo pipefail
+          mkdir -p "$OLLAMA_MODELS"
+          nohup ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS "$OLLAMA_URL/api/version" > /dev/null 2>&1; then
+              echo "Ollama is ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::warning::Ollama did not become ready within 60s"
+          cat "$RUNNER_TEMP/ollama.log" || true
+          # Не падаем: скрипт сам сформирует комментарий с ошибкой.
+          exit 0
+
+      - name: Pull model (only on cache miss)
+        if: steps.ollama-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+          ollama pull "$MODEL"
+
+      - name: Generate review
+        continue-on-error: true
+        run: |
+          python .github/scripts/ai_review.py review \
+            --diff "$RUNNER_TEMP/ai-review/pr.diff" \
+            --out "$RUNNER_TEMP/ai-review/comment.md"
+          cat "$RUNNER_TEMP/ai-review/comment.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish comment
+        # Для PR из форка GITHUB_TOKEN только на чтение - публикация невозможна.
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python .github/scripts/ai_review.py publish \
+            --body "$RUNNER_TEMP/ai-review/comment.md"
+
+      - name: Skip publishing (fork PR)
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "PR from a fork: GITHUB_TOKEN is read-only, comment is not published."
+          echo "The review text is available in the job summary."

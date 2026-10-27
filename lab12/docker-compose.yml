@@ -1,0 +1,84 @@
+# Стенд «Система управления клиникой»: PostgreSQL 16 -> одноразовая миграция -> приложение.
+#
+#   cp .env.example .env                   # PowerShell: Copy-Item .env.example .env
+#   # заполните POSTGRES_PASSWORD и JWT_SECRET в .env (команды генерации - в .env.example)
+#   docker compose up -d --build           # поднять стенд (миграции применяются автоматически)
+#   curl http://127.0.0.1:8000/api/health  # {"status":"ok"}
+#   docker compose logs -f app             # журнал приложения
+#   docker compose down                    # остановить (данные сохраняются в томе pgdata)
+#   docker compose down --volumes          # остановить и УДАЛИТЬ данные
+#
+# Демо-данные (пароль всех демо-пользователей берётся из переменной окружения оболочки):
+#   export SEED_PASSWORD='<пароль не короче 8 символов>'          # PowerShell: $env:SEED_PASSWORD='...'
+#   docker compose run --rm --no-deps -e SEED_PASSWORD app python -m scripts.seed
+#
+# Секретов в этом файле нет: все значения берутся из .env, а обязательные описаны как
+# ${VAR:?сообщение} - без них docker compose откажется стартовать с понятной ошибкой.
+
+name: clinic
+
+# Общая часть сервисов migrate и app: один и тот же образ и одинаковые настройки.
+# Settings приложения требует и DATABASE_URL, и JWT_SECRET, поэтому JWT_SECRET нужен даже миграции.
+x-app: &app
+  build:
+    context: .
+  image: clinic-app:local
+  environment:
+    DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-clinic}:${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env (см. .env.example)}@db:5432/${POSTGRES_DB:-clinic}"
+    JWT_SECRET: "${JWT_SECRET:?задайте JWT_SECRET в .env (см. .env.example)}"
+    JWT_TTL_MINUTES: "${JWT_TTL_MINUTES:-60}"
+    CLINIC_TIMEZONE: "${CLINIC_TIMEZONE:-Europe/Moscow}"
+  # Усиление изоляции: приложение ничего не пишет на диск и не требует привилегий.
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-clinic}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env (см. .env.example)}"
+      POSTGRES_DB: "${POSTGRES_DB:-clinic}"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # -h 127.0.0.1: во время первичной инициализации PostgreSQL слушает только unix-сокет,
+      # и pg_isready без -h сообщил бы «готов» раньше, чем база начнёт принимать TCP-подключения.
+      # $$ - экранирование для compose: переменные раскрывает оболочка внутри контейнера.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # Одноразовая миграция схемы; завершается с кодом 0. Повторный запуск безопасен.
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    healthcheck:
+      disable: true # HEALTHCHECK образа проверяет веб-сервер, которого в этом контейнере нет
+
+  app:
+    <<: *app
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    ports:
+      # Только loopback: наружу порт открывайте осознанно (за reverse proxy с TLS).
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
+
+volumes:
+  pgdata:

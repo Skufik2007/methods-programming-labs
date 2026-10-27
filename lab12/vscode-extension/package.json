@@ -1,0 +1,90 @@
+{
+  "name": "clinic-ai-explain-code",
+  "displayName": "Clinic AI: Explain Code",
+  "description": "Объясняет выделенный код с помощью локальной модели Ollama (потоковый вывод).",
+  "version": "0.1.0",
+  "publisher": "chetverikov-lab",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "clinicAi.explainCode",
+        "title": "Объясни этот код",
+        "category": "Clinic AI",
+        "icon": "$(sparkle)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "clinicAi.explainCode",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "clinicAi.explainCode",
+          "group": "navigation@100"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "clinicAi.explainCode",
+          "when": "editorHasSelection",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Clinic AI",
+      "properties": {
+        "clinicAi.ollamaUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:11434",
+          "description": "Адрес сервера Ollama."
+        },
+        "clinicAi.model": {
+          "type": "string",
+          "default": "qwen2.5-coder:3b",
+          "description": "Имя модели Ollama (должна быть загружена командой ollama pull)."
+        },
+        "clinicAi.systemPrompt": {
+          "type": "string",
+          "default": "",
+          "editPresentation": "multilineText",
+          "markdownDescription": "Свой системный промпт. Если пусто — используется встроенный (объяснение на русском по структуре: что делает код, как работает, неочевидные места, как улучшить)."
+        },
+        "clinicAi.temperature": {
+          "type": "number",
+          "default": 0.2,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Температура генерации (0..1)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "tsc -p tsconfig.test.json",
+    "test": "node --test out-test/test/prompt.test.js out-test/test/ollama.test.js",
+    "package": "vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.0.0",
+    "typescript": "^5.5.0"
+  }
+}

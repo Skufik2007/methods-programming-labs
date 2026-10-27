@@ -1,0 +1,49 @@
+# Конфигурация Continue.dev для работы с локальными моделями Ollama (задание 3).
+# Установка: скопировать в ~/.continue/config.yaml (Windows: %USERPROFILE%\.continue\config.yaml),
+# затем запустить Ollama и скачать модели:
+#   ollama pull qwen2.5-coder:3b
+#   ollama pull qwen2.5-coder:1.5b
+name: Clinic local models
+version: 1.0.0
+schema: v1
+
+models:
+  # Чат, правки и применение изменений: 3b целиком помещается в 4 ГБ видеопамяти (RTX 3050 Laptop).
+  - name: Qwen2.5-Coder 3B (локально)
+    provider: ollama
+    model: qwen2.5-coder:3b
+    apiBase: http://127.0.0.1:11434
+    roles:
+      - chat
+      - edit
+      - apply
+    defaultCompletionOptions:
+      temperature: 0.2
+      contextLength: 8192
+  # Автодополнение: меньшая модель отвечает быстрее, задержка важнее качества.
+  - name: Qwen2.5-Coder 1.5B (автодополнение)
+    provider: ollama
+    model: qwen2.5-coder:1.5b
+    apiBase: http://127.0.0.1:11434
+    roles:
+      - autocomplete
+
+context:
+  - provider: code
+  - provider: currentFile
+  - provider: file
+  - provider: diff
+  - provider: terminal
+  - provider: problems
+
+rules:
+  - Отвечай на русском языке.
+  - Проект — FastAPI, SQLAlchemy 2.0 async, Pydantic v2; время только timezone-aware UTC.
+  - Не предлагай хранить секреты в коде и не выводи данные пользователей через innerHTML.
+
+prompts:
+  - name: explain-clinic
+    description: Объяснить выделенный код проекта клиники
+    prompt: |
+      Объясни выделенный код: что делает, как работает по шагам, какие неочевидные
+      места и возможные ошибки, как улучшить. Учитывай, что это система записи к врачу.

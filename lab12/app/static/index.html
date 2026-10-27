@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Система управления клиникой</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Перейти к содержимому</a>
+
+  <header class="topbar">
+    <h1 class="brand">Клиника</h1>
+    <div id="userbox" class="userbox" hidden>
+      <span id="user-name" class="user-name"></span>
+      <span id="user-role" class="role-tag"></span>
+      <button id="btn-logout" type="button" class="btn btn-secondary">Выйти</button>
+    </div>
+  </header>
+
+  <nav id="nav" class="nav" aria-label="Разделы" hidden>
+    <ul id="nav-list" class="nav-list"></ul>
+  </nav>
+
+  <main id="main" class="main" tabindex="-1">
+
+    <!-- ============ Вход и регистрация ============ -->
+    <section id="screen-auth" class="auth" aria-labelledby="auth-title">
+      <h2 id="auth-title" tabindex="-1">Вход в систему</h2>
+      <p id="auth-info" class="notice" role="status" hidden></p>
+
+      <form id="form-login" class="panel" autocomplete="on">
+        <div class="field">
+          <label for="login-email">Email</label>
+          <input id="login-email" name="email" type="email" required autocomplete="username" maxlength="254">
+        </div>
+        <div class="field">
+          <label for="login-password">Пароль</label>
+          <input id="login-password" name="password" type="password" required autocomplete="current-password" maxlength="1024">
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions"><button type="submit" class="btn">Войти</button></div>
+      </form>
+
+      <details id="register-box" class="panel">
+        <summary>Регистрация пациента</summary>
+        <form id="form-register" class="register-form" autocomplete="on">
+          <div class="form-grid">
+            <div class="field">
+              <label for="reg-name">ФИО</label>
+              <input id="reg-name" name="full_name" type="text" required minlength="2" maxlength="255" autocomplete="name">
+            </div>
+            <div class="field">
+              <label for="reg-birth">Дата рождения</label>
+              <input id="reg-birth" name="birth_date" type="date" required autocomplete="bday">
+            </div>
+            <div class="field">
+              <label for="reg-email">Email</label>
+              <input id="reg-email" name="email" type="email" required maxlength="254" autocomplete="email">
+            </div>
+            <div class="field">
+              <label for="reg-password">Пароль</label>
+              <input id="reg-password" name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" aria-describedby="reg-password-hint">
+              <small id="reg-password-hint">От 8 символов, не более 72 байт.</small>
+            </div>
+            <div class="field">
+              <label for="reg-phone">Телефон (необязательно)</label>
+              <input id="reg-phone" name="phone" type="tel" placeholder="+79991234567" autocomplete="tel" aria-describedby="reg-phone-hint">
+              <small id="reg-phone-hint">Формат +79991234567.</small>
+            </div>
+            <div class="field">
+              <label for="reg-policy">Номер полиса ОМС</label>
+              <input id="reg-policy" name="policy_number" type="text" required inputmode="numeric" pattern="[0-9]{16}" maxlength="16" autocomplete="off" aria-describedby="reg-policy-hint">
+              <small id="reg-policy-hint">16 цифр.</small>
+            </div>
+          </div>
+          <p class="form-error" role="alert" hidden></p>
+          <div class="actions"><button type="submit" class="btn">Зарегистрироваться</button></div>
+        </form>
+      </details>
+    </section>
+
+    <!-- ============ Пациент ============ -->
+    <section id="view-p-appointments" class="view" aria-labelledby="t-p-appointments" hidden>
+      <h2 id="t-p-appointments" tabindex="-1">Мои записи</h2>
+      <div class="toolbar">
+        <div class="field field-inline">
+          <label for="p-app-filter">Статус</label>
+          <select id="p-app-filter">
+            <option value="">Все</option>
+            <option value="scheduled">Запланированные</option>
+            <option value="completed">Состоявшиеся</option>
+            <option value="cancelled">Отменённые</option>
+            <option value="no_show">Неявки</option>
+          </select>
+        </div>
+      </div>
+      <p id="p-app-error" class="form-error" role="alert" hidden></p>
+      <p class="hint">Отменить запись можно не позже чем за 2 часа до начала приёма.</p>
+      <ul id="p-app-list" class="cards"></ul>
+    </section>
+
+    <section id="view-p-new" class="view" aria-labelledby="t-p-new" hidden>
+      <h2 id="t-p-new" tabindex="-1">Новая запись</h2>
+      <form id="form-new" class="panel booking-form">
+        <div class="form-grid">
+          <div class="field">
+            <label for="new-specialty">Специальность</label>
+            <select id="new-specialty" name="specialty"></select>
+          </div>
+          <div class="field">
+            <label for="new-doctor">Врач</label>
+            <select id="new-doctor" name="doctor" required></select>
+          </div>
+          <div class="field">
+            <label for="new-date">Дата</label>
+            <input id="new-date" name="date" type="date" required>
+          </div>
+        </div>
+        <div class="slot-box" aria-live="polite"></div>
+        <div class="field">
+          <label for="new-reason">Причина обращения (необязательно)</label>
+          <textarea id="new-reason" name="reason" rows="2" maxlength="500"></textarea>
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions"><button type="submit" class="btn">Записаться</button></div>
+      </form>
+    </section>
+
+    <section id="view-p-records" class="view" aria-labelledby="t-p-records" hidden>
+      <h2 id="t-p-records" tabindex="-1">Медкарта и рецепты</h2>
+      <p id="p-rec-error" class="form-error" role="alert" hidden></p>
+      <h3>Записи медкарты</h3>
+      <ul id="p-rec-list" class="cards"></ul>
+      <h3>Рецепты</h3>
+      <ul id="p-presc-list" class="cards"></ul>
+    </section>
+
+    <section id="view-p-profile" class="view" aria-labelledby="t-p-profile" hidden>
+      <h2 id="t-p-profile" tabindex="-1">Профиль</h2>
+      <p id="p-profile-error" class="form-error" role="alert" hidden></p>
+      <div id="p-profile" class="panel"></div>
+    </section>
+
+    <!-- ============ Врач ============ -->
+    <section id="view-d-schedule" class="view" aria-labelledby="t-d-schedule" hidden>
+      <h2 id="t-d-schedule" tabindex="-1">Расписание</h2>
+      <div class="toolbar">
+        <button id="d-prev" type="button" class="btn btn-secondary" aria-label="Предыдущий день">&larr;</button>
+        <div class="field field-inline">
+          <label for="d-date">День</label>
+          <input id="d-date" type="date">
+        </div>
+        <button id="d-next" type="button" class="btn btn-secondary" aria-label="Следующий день">&rarr;</button>
+        <button id="d-today" type="button" class="btn btn-secondary">Сегодня</button>
+      </div>
+      <p id="d-error" class="form-error" role="alert" hidden></p>
+      <ul id="d-list" class="cards"></ul>
+    </section>
+
+    <section id="view-d-patients" class="view" aria-labelledby="t-d-patients" hidden>
+      <h2 id="t-d-patients" tabindex="-1">Медкарты пациентов</h2>
+      <div class="toolbar">
+        <div class="field field-inline">
+          <label for="d-patient-select">Пациент</label>
+          <select id="d-patient-select"></select>
+        </div>
+      </div>
+      <p id="d-pat-error" class="form-error" role="alert" hidden></p>
+      <div id="d-patient-info" class="panel" hidden></div>
+      <ul id="d-rec-list" class="cards"></ul>
+    </section>
+
+    <!-- ============ Регистратор / администратор ============ -->
+    <section id="view-r-appointments" class="view" aria-labelledby="t-r-appointments" hidden>
+      <h2 id="t-r-appointments" tabindex="-1">Записи на приём</h2>
+      <form id="form-rapp" class="panel">
+        <div class="form-grid">
+          <div class="field">
+            <label for="ra-from">С даты</label>
+            <input id="ra-from" name="date_from" type="date">
+          </div>
+          <div class="field">
+            <label for="ra-to">По дату</label>
+            <input id="ra-to" name="date_to" type="date">
+          </div>
+          <div class="field">
+            <label for="ra-doctor">Врач</label>
+            <select id="ra-doctor" name="doctor"></select>
+          </div>
+          <div class="field">
+            <label for="ra-status">Статус</label>
+            <select id="ra-status" name="status">
+              <option value="">Все</option>
+              <option value="scheduled">Запланированные</option>
+              <option value="completed">Состоявшиеся</option>
+              <option value="cancelled">Отменённые</option>
+              <option value="no_show">Неявки</option>
+            </select>
+          </div>
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions"><button type="submit" class="btn">Показать</button></div>
+      </form>
+      <ul id="ra-list" class="cards"></ul>
+    </section>
+
+    <section id="view-r-book" class="view" aria-labelledby="t-r-book" hidden>
+      <h2 id="t-r-book" tabindex="-1">Запись пациента к врачу</h2>
+      <form id="form-book" class="panel booking-form">
+        <fieldset class="patient-pick">
+          <legend>Пациент</legend>
+          <div class="search-row">
+            <div class="field">
+              <label for="rb-q">Поиск по ФИО или номеру полиса</label>
+              <input id="rb-q" type="search" maxlength="100" autocomplete="off">
+            </div>
+            <button id="rb-search" type="button" class="btn btn-secondary">Найти</button>
+          </div>
+          <div class="field">
+            <label for="rb-patient">Найденные пациенты</label>
+            <select id="rb-patient" name="patient" required></select>
+          </div>
+        </fieldset>
+        <div class="form-grid">
+          <div class="field">
+            <label for="book-specialty">Специальность</label>
+            <select id="book-specialty" name="specialty"></select>
+          </div>
+          <div class="field">
+            <label for="book-doctor">Врач</label>
+            <select id="book-doctor" name="doctor" required></select>
+          </div>
+          <div class="field">
+            <label for="book-date">Дата</label>
+            <input id="book-date" name="date" type="date" required>
+          </div>
+        </div>
+        <div class="slot-box" aria-live="polite"></div>
+        <div class="field">
+          <label for="book-reason">Причина обращения (необязательно)</label>
+          <textarea id="book-reason" name="reason" rows="2" maxlength="500"></textarea>
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions"><button type="submit" class="btn">Записать</button></div>
+      </form>
+    </section>
+
+    <section id="view-r-patients" class="view" aria-labelledby="t-r-patients" hidden>
+      <h2 id="t-r-patients" tabindex="-1">Пациенты</h2>
+      <form id="form-psearch" class="panel">
+        <div class="search-row">
+          <div class="field">
+            <label for="ps-q">Поиск по ФИО или номеру полиса</label>
+            <input id="ps-q" name="q" type="search" maxlength="100" autocomplete="off">
+          </div>
+          <button type="submit" class="btn">Найти</button>
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+      </form>
+      <ul id="ps-list" class="cards"></ul>
+      <div class="actions"><button id="ps-more" type="button" class="btn btn-secondary" hidden>Показать ещё</button></div>
+
+      <h3>Новый пациент</h3>
+      <form id="form-pcreate" class="panel">
+        <div class="form-grid">
+          <div class="field">
+            <label for="pc-name">ФИО</label>
+            <input id="pc-name" name="full_name" type="text" required minlength="2" maxlength="255">
+          </div>
+          <div class="field">
+            <label for="pc-birth">Дата рождения</label>
+            <input id="pc-birth" name="birth_date" type="date" required>
+          </div>
+          <div class="field">
+            <label for="pc-phone">Телефон (необязательно)</label>
+            <input id="pc-phone" name="phone" type="tel" placeholder="+79991234567">
+          </div>
+          <div class="field">
+            <label for="pc-policy">Номер полиса ОМС (16 цифр)</label>
+            <input id="pc-policy" name="policy_number" type="text" required inputmode="numeric" pattern="[0-9]{16}" maxlength="16" autocomplete="off">
+          </div>
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions"><button type="submit" class="btn">Создать пациента</button></div>
+      </form>
+    </section>
+
+    <!-- ============ Администратор ============ -->
+    <section id="view-a-dashboard" class="view" aria-labelledby="t-a-dashboard" hidden>
+      <h2 id="t-a-dashboard" tabindex="-1">Аналитика</h2>
+      <form id="form-dash" class="panel">
+        <div class="form-grid">
+          <div class="field">
+            <label for="da-from">С даты</label>
+            <input id="da-from" name="date_from" type="date" required>
+          </div>
+          <div class="field">
+            <label for="da-to">По дату</label>
+            <input id="da-to" name="date_to" type="date" required>
+          </div>
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions"><button type="submit" class="btn">Показать</button></div>
+      </form>
+      <div id="dash-out"></div>
+    </section>
+
+    <section id="view-a-users" class="view" aria-labelledby="t-a-users" hidden>
+      <h2 id="t-a-users" tabindex="-1">Пользователи</h2>
+      <form id="form-ufilter" class="panel">
+        <div class="form-grid">
+          <div class="field">
+            <label for="uf-q">Поиск по email или ФИО</label>
+            <input id="uf-q" name="q" type="search" maxlength="100" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="uf-role">Роль</label>
+            <select id="uf-role" name="role">
+              <option value="">Все</option>
+              <option value="patient">Пациент</option>
+              <option value="doctor">Врач</option>
+              <option value="registrar">Регистратор</option>
+              <option value="admin">Администратор</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="uf-active">Состояние</label>
+            <select id="uf-active" name="active">
+              <option value="">Все</option>
+              <option value="true">Активные</option>
+              <option value="false">Заблокированные</option>
+            </select>
+          </div>
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions"><button type="submit" class="btn">Применить</button></div>
+      </form>
+      <ul id="u-list" class="cards"></ul>
+      <div class="actions"><button id="u-more" type="button" class="btn btn-secondary" hidden>Показать ещё</button></div>
+
+      <h3>Новый пользователь</h3>
+      <form id="form-ucreate" class="panel">
+        <div class="form-grid">
+          <div class="field">
+            <label for="uc-name">ФИО</label>
+            <input id="uc-name" name="full_name" type="text" required minlength="2" maxlength="255">
+          </div>
+          <div class="field">
+            <label for="uc-email">Email</label>
+            <input id="uc-email" name="email" type="email" required maxlength="254" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="uc-password">Пароль (от 8 символов)</label>
+            <input id="uc-password" name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password">
+          </div>
+          <div class="field">
+            <label for="uc-role">Роль</label>
+            <select id="uc-role" name="role" required>
+              <option value="patient">Пациент</option>
+              <option value="doctor">Врач</option>
+              <option value="registrar">Регистратор</option>
+              <option value="admin">Администратор</option>
+            </select>
+          </div>
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions"><button type="submit" class="btn">Создать пользователя</button></div>
+      </form>
+    </section>
+
+    <section id="view-a-doctors" class="view" aria-labelledby="t-a-doctors" hidden>
+      <h2 id="t-a-doctors" tabindex="-1">Врачи и графики</h2>
+      <p id="doc-error" class="form-error" role="alert" hidden></p>
+      <ul id="doc-list" class="cards"></ul>
+
+      <h3 id="doc-form-title">Новый профиль врача</h3>
+      <form id="form-doctor" class="panel" aria-labelledby="doc-form-title">
+        <div class="form-grid">
+          <div class="field">
+            <label for="df-user">Пользователь (роль «Врач»)</label>
+            <select id="df-user" name="user_id" required></select>
+          </div>
+          <div class="field">
+            <label for="df-specialty">Специальность</label>
+            <input id="df-specialty" name="specialty" type="text" required minlength="2" maxlength="100">
+          </div>
+          <div class="field">
+            <label for="df-cabinet">Кабинет</label>
+            <input id="df-cabinet" name="cabinet" type="text" required maxlength="20">
+          </div>
+          <div class="field">
+            <label for="df-slot">Длительность приёма, мин</label>
+            <input id="df-slot" name="slot_minutes" type="number" required min="5" max="240" step="1" value="30">
+          </div>
+          <div class="field">
+            <label for="df-start">Начало смены (МСК)</label>
+            <input id="df-start" name="work_start" type="time" required value="09:00">
+          </div>
+          <div class="field">
+            <label for="df-end">Конец смены (МСК)</label>
+            <input id="df-end" name="work_end" type="time" required value="17:00">
+          </div>
+        </div>
+        <fieldset class="days">
+          <legend>Рабочие дни</legend>
+          <span class="check"><input id="df-d1" type="checkbox" name="days" value="1" checked><label for="df-d1">Пн</label></span>
+          <span class="check"><input id="df-d2" type="checkbox" name="days" value="2" checked><label for="df-d2">Вт</label></span>
+          <span class="check"><input id="df-d3" type="checkbox" name="days" value="3" checked><label for="df-d3">Ср</label></span>
+          <span class="check"><input id="df-d4" type="checkbox" name="days" value="4" checked><label for="df-d4">Чт</label></span>
+          <span class="check"><input id="df-d5" type="checkbox" name="days" value="5" checked><label for="df-d5">Пт</label></span>
+          <span class="check"><input id="df-d6" type="checkbox" name="days" value="6"><label for="df-d6">Сб</label></span>
+          <span class="check"><input id="df-d7" type="checkbox" name="days" value="7"><label for="df-d7">Вс</label></span>
+        </fieldset>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions">
+          <button id="df-submit" type="submit" class="btn">Создать профиль</button>
+          <button id="df-cancel" type="button" class="btn btn-secondary" hidden>Отменить изменение</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <footer class="footer">
+    <small>Все даты и время показываются по времени клиники (Europe/Moscow, МСК).</small>
+  </footer>
+</body>
+</html>
