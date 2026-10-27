@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.env
+
+# Go
+agents/bin/
+*.exe
+*.test
+coverage.out
+
+# Локальный запуск
+.run/
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.egg-info/

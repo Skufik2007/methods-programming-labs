@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_macros.html" import live_table %}
+{% block title %}Запуск {{ run.run_short }}{% endblock %}
+{% block content %}
+<p><a href="/runs">← Все запуски</a></p>
+<h1>Запуск {{ run.run_short }}
+  <span class="badge {{ run.status_class }}" data-bind="run.status_label" data-bind-class="run.status_class"
+        data-base-class="badge">{{ run.status_label }}</span>
+</h1>
+
+<section class="card">
+  <dl class="kv">
+    <dt>Тип</dt><dd>{{ run.kind_label }}</dd>
+    <dt>Полный id</dt><dd class="mono">{{ run.run_id }}</dd>
+    <dt>Начат (UTC)</dt><dd>{{ run.started_at }}</dd>
+    <dt>Длительность</dt><dd data-bind="run.duration">{{ run.duration }}</dd>
+    {% if run.kind == "case" %}
+    <dt>Пациент</dt><dd>{{ run.case.patient_name }}, {{ run.case.age }} лет, {{ run.case.phone or "телефон не указан" }}</dd>
+    <dt>Желаемая специальность</dt><dd>{{ run.case.preferred_specialty_label }}</dd>
+    <dt>Жалоба</dt><dd class="complaint">{{ run.case.complaint }}</dd>
+    {% else %}
+    <dt>Запись</dt><dd>{{ run.case.appointment_id }}</dd>
+    <dt>Пациент</dt><dd>{{ run.case.patient_id }}</dd>
+    <dt>Оценка</dt><dd>{{ run.case.rating }} из 5</dd>
+    <dt>Текст отзыва</dt><dd class="complaint">{{ run.case.text or "—" }}</dd>
+    {% endif %}
+    <dt>Рекомендация</dt><dd data-bind="run.recommendation">{{ run.recommendation or "—" }}</dd>
+    <dt>Ошибка</dt><dd data-bind="run.error">{{ run.error or "—" }}</dd>
+    <dt>Трасса</dt>
+    <dd>
+      {% if run.trace_id %}
+      <a href="{{ jaeger_url }}/trace/{{ run.trace_id }}" target="_blank" rel="noopener noreferrer">Открыть в Jaeger</a>
+      <span class="mono muted">{{ run.trace_id }}</span>
+      {% else %}—{% endif %}
+    </dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Шаги цепочки</h2>
+  {{ live_table("steps-table", "/api/runs/" ~ run.run_id, "steps", [
+    {"field": "step_label", "title": "Шаг"},
+    {"field": "agent_id", "title": "Агент"},
+    {"field": "attempts", "title": "Попыток", "num": true},
+    {"field": "duration", "title": "Длительность"},
+    {"field": "status_label", "title": "Статус", "badge": "status_class"},
+    {"field": "error", "title": "Ошибка"},
+    {"field": "output_text", "title": "Выход", "pre": true},
+  ], steps, "Шаги ещё не начались") }}
+</section>
+
+<section>
+  <h2>Журнал событий запуска</h2>
+  <p class="note">Кто что получил и передал, по времени (UTC).</p>
+  {{ live_table("events-table", "/api/runs/" ~ run.run_id, "events", [
+    {"field": "ts_fmt", "title": "Время"},
+    {"field": "source", "title": "Источник"},
+    {"field": "action_label", "title": "Действие"},
+    {"field": "step_label", "title": "Шаг"},
+    {"field": "summary", "title": "Подробности"},
+  ], events, "Событий пока нет") }}
+</section>
+{% endblock %}

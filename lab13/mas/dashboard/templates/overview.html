@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import live_table %}
+{% block title %}Обзор{% endblock %}
+{% block content %}
+<h1>Обзор системы</h1>
+
+<section>
+  <h2>Агенты</h2>
+  {{ live_table("agents-table", "/api/agents", "agents", [
+    {"field": "agent_id", "title": "ID"},
+    {"field": "title", "title": "Роль"},
+    {"field": "lang", "title": "Язык"},
+    {"field": "status_label", "title": "Статус", "badge": "status_class"},
+    {"field": "processed", "title": "Обработано", "num": true},
+    {"field": "failed", "title": "Ошибок", "num": true},
+    {"field": "inflight", "title": "В работе", "num": true},
+    {"field": "last_heartbeat", "title": "Последний heartbeat (UTC)"},
+  ], agents, "Агенты не отвечают: heartbeat не получен") }}
+</section>
+
+<section>
+  <h2>Очереди JetStream</h2>
+  <p class="note" data-bind="message" data-bind-url="/api/queues" data-bind-blank="1">{{ queues.message }}</p>
+  {{ live_table("queues-table", "/api/queues", "queues", [
+    {"field": "consumer", "title": "Консьюмер"},
+    {"field": "step_label", "title": "Шаг"},
+    {"field": "pending", "title": "Ожидают", "num": true},
+    {"field": "ack_pending", "title": "В обработке", "num": true},
+    {"field": "redelivered", "title": "Повторные доставки", "num": true},
+  ], queues.queues, "Нет данных об очередях") }}
+</section>
+
+<div class="cols">
+  <section>
+    <h2>Метрики оркестратора</h2>
+    {{ live_table("metrics-table", "/api/metrics", "metrics", [
+      {"field": "name", "title": "Показатель"},
+      {"field": "value", "title": "Значение", "num": true},
+    ], metrics) }}
+  </section>
+
+  <section>
+    <h2>Автомасштабировщик</h2>
+    <p class="note" data-bind="message" data-bind-url="/api/autoscaler" data-bind-blank="1">{{ autoscaler.message }}</p>
+    {{ live_table("autoscaler-table", "/api/autoscaler", "steps", [
+      {"field": "step_label", "title": "Шаг"},
+      {"field": "backlog", "title": "Очередь", "num": true},
+      {"field": "total", "title": "Экземпляров", "num": true},
+      {"field": "desired", "title": "Нужно", "num": true},
+      {"field": "range", "title": "min–max"},
+      {"field": "auto", "title": "Добавочные"},
+    ], autoscaler.steps, "Нет данных") }}
+  </section>
+</div>
+
+<section>
+  <h2>Последние запуски</h2>
+  {{ live_table("runs-table", "/api/runs?limit=10", "items", [
+    {"field": "run_short", "title": "Запуск", "link_prefix": "/runs/", "link_field": "run_id"},
+    {"field": "kind_label", "title": "Тип"},
+    {"field": "patient", "title": "Пациент"},
+    {"field": "status_label", "title": "Статус", "badge": "status_class"},
+    {"field": "progress", "title": "Шаги"},
+    {"field": "started_fmt", "title": "Начат (UTC)"},
+    {"field": "duration", "title": "Длительность"},
+  ], runs, "Запусков пока нет") }}
+  <p><a href="/runs">Все запуски →</a></p>
+</section>
+{% endblock %}

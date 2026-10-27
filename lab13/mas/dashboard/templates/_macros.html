@@ -1,0 +1,56 @@
+{# Таблица с автообновлением. Колонки: field, title; необязательно: badge (поле с css-классом),
+   link_prefix + link_field (ссылка), pre (многострочный текст), num (выравнивание вправо).
+   Те же data-атрибуты читает static/app.js; без JS остаётся серверная разметка. #}
+{% macro live_table(id, url, key, columns, rows, empty="Нет данных") %}
+<table class="data" id="{{ id }}" data-live-url="{{ url }}" data-live-key="{{ key }}" data-empty="{{ empty }}">
+  <thead>
+    <tr>
+      {% for c in columns %}
+      <th data-field="{{ c.field }}"
+          {% if c.badge %}data-badge="{{ c.badge }}"{% endif %}
+          {% if c.link_prefix %}data-link-prefix="{{ c.link_prefix }}" data-link-field="{{ c.link_field }}"{% endif %}
+          {% if c.pre %}data-pre="1"{% endif %}
+          {% if c.num %}class="num" data-num="1"{% endif %}>{{ c.title }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      {% for c in columns %}
+      <td{% if c.num %} class="num"{% endif %}>
+        {%- set value = row[c.field] -%}
+        {%- if c.badge -%}
+          <span class="badge {{ row[c.badge] }}">{{ value }}</span>
+        {%- elif c.link_prefix -%}
+          <a href="{{ c.link_prefix }}{{ row[c.link_field] | urlencode }}">{{ value }}</a>
+        {%- elif c.pre -%}
+          {%- if value %}<pre class="out">{{ value }}</pre>{% else %}—{% endif -%}
+        {%- else -%}
+          {{ value if value not in (none, "") else "—" }}
+        {%- endif -%}
+      </td>
+      {% endfor %}
+    </tr>
+    {% else %}
+    <tr class="empty"><td colspan="{{ columns | length }}">{{ empty }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% macro pager(p) %}
+<nav class="pager" aria-label="Страницы">
+  <span>{{ p.first }}–{{ p.last }} из {{ p.total }}</span>
+  {% if p.prev %}<a href="{{ p.prev }}">← Назад</a>{% else %}<span class="disabled">← Назад</span>{% endif %}
+  {% if p.next %}<a href="{{ p.next }}">Вперёд →</a>{% else %}<span class="disabled">Вперёд →</span>{% endif %}
+</nav>
+{% endmacro %}
+
+{% macro errors(items) %}
+{% if items %}
+<ul class="errors" role="alert">
+  {% for e in items %}<li><b>{{ e.label }}:</b> {{ e.message }}</li>{% endfor %}
+</ul>
+{% endif %}
+{% endmacro %}

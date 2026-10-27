@@ -1,0 +1,256 @@
+# Мультиагентная система поддержки пациентов (ЛР №13): весь стенд в Docker Compose.
+#
+#   docker compose up -d --build --wait            # LLM-агенты в режиме правил (fallback)
+#   LLM_MODE=llm docker compose --profile llm up -d --build --wait   # + Ollama, агенты работают через модель
+#   python scripts/e2e.py                          # сквозная проверка
+#   docker compose down -v
+#
+# Дашборд: http://localhost:8000, Jaeger: http://localhost:16686, NATS: http://localhost:8222,
+# статус автомасштабировщика: http://localhost:8090/status.
+#
+# Переменные (все необязательные, умолчания в скобках):
+#   LLM_MODE (fallback)          режим LLM-агентов: fallback — правила, llm — модель через Ollama
+#   OLLAMA_MODEL (qwen2.5:3b)    модель, которую скачивает сервис ollama-pull (профиль llm)
+#   TRIAGE_SLOW_MS (0)           искусственная задержка триажа — чтобы вызвать рост очереди
+#   REMINDER_DEMO_DELAY (5s)     через сколько напоминание «отправляется» (демо вместо реальных 24h/2h)
+#   SURVEY_DEMO_DELAY (10s)      то же для опроса после приёма
+#   AGENT_FAIL_RATE (0)          доля искусственных сбоев агентов, 0..1
+#   LOG_LEVEL (info)             уровень логов
+#   JAEGER_UI_URL                адрес Jaeger для ссылок в дашборде (http://localhost:16686)
+#   DOCKER_SOCK (/var/run/docker.sock)  сокет Docker для автомасштабировщика
+# Обязательных переменных нет: у всех есть безопасные значения по умолчанию (`${VAR:?}` не нужен).
+
+name: mas
+
+# Общие настройки сервисов.
+x-service: &service
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "3"}
+
+# Go-агент: образ mas-agent собирается один раз (сервис triage), остальные его только используют.
+x-agent: &agent
+  <<: *service
+  image: mas-agent:latest
+  pull_policy: never   # образ собирается этим же compose-файлом; тянуть из реестра нечего
+  environment: &agent-env
+    NATS_URL: nats://nats:4222
+    REDIS_URL: redis://redis:6379/0
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+    AGENT_FAIL_RATE: ${AGENT_FAIL_RATE:-0}
+  depends_on: &agent-deps
+    nats: {condition: service_healthy}
+    redis: {condition: service_healthy}
+    jaeger: {condition: service_started}  # у образа Jaeger нет shell, healthcheck невозможен
+
+# Python-сервис: образ mas-python собирается один раз (сервис dashboard).
+x-python: &python
+  <<: *service
+  image: mas-python:latest
+  pull_policy: never
+
+# LLM-агент: в fallback-режиме Ollama не нужна; в профиле llm ждёт загрузки модели.
+x-llm-env: &llm-env
+  NATS_URL: nats://nats:4222
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  LLM_MODE: ${LLM_MODE:-fallback}
+  OLLAMA_URL: http://ollama:11434
+
+services:
+  nats:
+    <<: *service
+    image: nats:2.11-alpine
+    # -js — JetStream (поток TASKS), -sd — каталог хранилища (volume), -m — порт мониторинга.
+    command: ["-js", "-sd", "/data", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8222/healthz"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    <<: *service
+    image: redis:7-alpine
+    # AOF: состояние (записи, напоминания, счётчики) переживает пересоздание контейнеров.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  jaeger:
+    <<: *service
+    image: jaegertracing/jaeger:2.22.0
+    ports:
+      - "16686:16686"   # UI и API запросов
+      - "4318:4318"     # OTLP HTTP
+
+  # ---- Go-агенты ----
+  triage:
+    <<: *agent
+    # Единственный сервис со сборкой образа mas-agent; compose собирает его перед запуском остальных.
+    build:
+      context: .
+      dockerfile: deploy/agent.Dockerfile
+    command: ["/app/agent", "-role", "/app/roles/triage.md"]
+    environment:
+      <<: *agent-env
+      AGENT_ID: triage-1
+      AGENT_SLOW_MS: ${TRIAGE_SLOW_MS:-0}
+
+  booking-a:
+    <<: *agent
+    command: ["/app/agent", "-role", "/app/roles/booking-a.md"]
+    environment:
+      <<: *agent-env
+      AGENT_ID: booking-a
+
+  booking-b:
+    <<: *agent
+    command: ["/app/agent", "-role", "/app/roles/booking-b.md"]
+    environment:
+      <<: *agent-env
+      AGENT_ID: booking-b
+
+  reminder:
+    <<: *agent
+    command: ["/app/agent", "-role", "/app/roles/reminder.md"]
+    environment:
+      <<: *agent-env
+      AGENT_ID: reminder-1
+      REMINDER_DEMO_DELAY: ${REMINDER_DEMO_DELAY:-5s}
+
+  feedback:
+    <<: *agent
+    command: ["/app/agent", "-role", "/app/roles/feedback.md"]
+    environment:
+      <<: *agent-env
+      AGENT_ID: feedback-1
+      SURVEY_DEMO_DELAY: ${SURVEY_DEMO_DELAY:-10s}
+
+  # ---- LLM-агенты (Python) ----
+  llm-intake:
+    <<: *python
+    command: ["python", "-m", "mas.llm_agent", "--role", "/app/roles/intake.md"]
+    environment:
+      <<: *llm-env
+      AGENT_ID: llm-intake-1
+    depends_on:
+      nats: {condition: service_healthy}
+      jaeger: {condition: service_started}
+      ollama-pull: {condition: service_completed_successfully, required: false}  # только в профиле llm
+
+  llm-feedback-reply:
+    <<: *python
+    command: ["python", "-m", "mas.llm_agent", "--role", "/app/roles/feedback_reply.md"]
+    environment:
+      <<: *llm-env
+      AGENT_ID: llm-feedback-reply-1
+    depends_on:
+      nats: {condition: service_healthy}
+      jaeger: {condition: service_started}
+      ollama-pull: {condition: service_completed_successfully, required: false}
+
+  # ---- Дашборд + оркестратор (один процесс) ----
+  dashboard:
+    <<: *python
+    build:
+      context: .
+      dockerfile: deploy/python.Dockerfile
+    command: ["python", "-m", "mas.dashboard"]
+    environment:
+      NATS_URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DASHBOARD_HOST: 0.0.0.0
+      DASHBOARD_PORT: "8000"
+      AUTOSCALER_URL: http://autoscaler:8090
+      JAEGER_UI_URL: ${JAEGER_UI_URL:-http://localhost:16686}
+    ports:
+      - "8000:8000"
+    depends_on:
+      nats: {condition: service_healthy}
+      jaeger: {condition: service_started}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  # ---- Автомасштабировщик (бэкенд docker) ----
+  autoscaler:
+    <<: *service
+    image: mas-agent:latest
+    pull_policy: never
+    command: ["/app/autoscaler", "-config", "/app/deploy/autoscaler.docker.yaml"]
+    # Сокет Docker принадлежит root:docker с разным gid на разных хостах, поэтому процесс
+    # запускается от root. Это единственный сервис, которому нужен доступ к сокету.
+    user: "0:0"
+    environment:
+      NATS_URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "8090:8090"
+    volumes:
+      - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock
+      - ./deploy/autoscaler.docker.yaml:/app/deploy/autoscaler.docker.yaml:ro
+    depends_on:
+      nats: {condition: service_healthy}
+      jaeger: {condition: service_started}
+      triage: {condition: service_started}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8090/status"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+
+  # ---- Профиль llm: Ollama и загрузка модели ----
+  ollama:
+    <<: *service
+    profiles: [llm]
+    image: ollama/ollama:0.12.6
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ollama-pull:
+    profiles: [llm]
+    image: ollama/ollama:0.12.6
+    restart: "no"
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-qwen2.5:3b}"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    depends_on:
+      ollama: {condition: service_healthy}
+
+volumes:
+  nats-data:
+  redis-data:
+  ollama-models:
+
+networks:
+  default:
+    # Имя сети задано явно: на него ссылается docker.network в deploy/autoscaler.docker.yaml.
+    name: mas_default

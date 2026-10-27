@@ -1,0 +1,24 @@
+# Контекст сборки — корень репозитория; в образы попадают только agents/, mas/, roles/, pyproject.toml.
+.git
+.github
+.venv
+.run
+.pytest_cache
+.ruff_cache
+.coverage
+coverage.xml
+htmlcov
+**/__pycache__
+**/*.py[cod]
+*.egg-info
+agents/bin
+**/*.exe
+**/*.test
+coverage.out
+tests
+docs
+reports
+prompts
+scripts
+README.md
+.env

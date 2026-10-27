@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import errors %}
+{% block title %}Ручной запуск{% endblock %}
+{% block content %}
+<h1>Ручной запуск</h1>
+
+<div class="cols">
+<section class="card">
+  <h2>Новое обращение</h2>
+  {{ errors(case_errors) }}
+  <form method="post" action="/new/case" class="stack">
+    <label>ФИО
+      <input name="patient_name" maxlength="200" required value="{{ case_values.patient_name or '' }}">
+    </label>
+    <label>Возраст
+      <input name="age" type="number" min="0" max="120" required value="{{ case_values.age or '' }}">
+    </label>
+    <label>Телефон
+      <input name="phone" type="tel" maxlength="40" value="{{ case_values.phone or '' }}">
+    </label>
+    <label>Жалоба
+      <textarea name="complaint" rows="4" minlength="3" maxlength="2000" required>{{ case_values.complaint or '' }}</textarea>
+    </label>
+    <label>Желаемая специальность
+      <select name="preferred_specialty">
+        <option value="">не важно (определит система)</option>
+        {% for code, label in specialties %}
+        <option value="{{ code }}" {% if code == case_values.preferred_specialty %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Запустить обработку</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Отзыв о приёме</h2>
+  {{ errors(feedback_errors) }}
+  <form method="post" action="/new/feedback" class="stack">
+    <label>Номер записи
+      <input name="appointment_id" maxlength="100" required value="{{ feedback_values.appointment_id or '' }}">
+    </label>
+    <label>Пациент
+      <input name="patient_id" maxlength="100" required value="{{ feedback_values.patient_id or '' }}">
+    </label>
+    <label>Оценка
+      <select name="rating">
+        {% for n in (5, 4, 3, 2, 1) %}
+        <option value="{{ n }}" {% if feedback_values.rating == n|string %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Текст отзыва
+      <textarea name="text" rows="3" maxlength="2000">{{ feedback_values.text or '' }}</textarea>
+    </label>
+    <button type="submit">Отправить отзыв</button>
+  </form>
+</section>
+</div>
+
+<section class="card">
+  <h2>Нагрузка</h2>
+  <p class="note">Демонстрация масштабирования: запускает несколько обращений подряд.</p>
+  {{ errors(load_errors) }}
+  <form method="post" action="/new/load" class="filters">
+    <label>Количество
+      <input name="count" type="number" min="1" max="{{ max_load }}" value="10" required>
+    </label>
+    <button type="submit">Нагрузка: демо-обращения</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,16 @@
+# Автомасштабировщик, локальный режим: добавочные агенты — процессы на этой машине.
+# Запуск (из каталога agents/):  go run ./cmd/autoscaler -config ../deploy/autoscaler.local.yaml
+backend: exec
+interval: 2s
+status_port: 8090
+# nats_url: nats://localhost:4222   # по умолчанию NATS_URL из окружения
+exec:
+  agent_bin: ./bin/agent.exe        # собранный агент (go build -o bin/agent.exe ./cmd/agent); на Linux — ./bin/agent
+  stop_timeout: 15s
+steps:
+  - step: triage
+    role: ../roles/triage.md
+    per_instance: 5   # один экземпляр на каждые 5 задач в очереди
+    min: 1            # столько экземпляров запущено вне автомасштабировщика
+    max: 3            # всего (статические + добавочные)
+    cooldown: 30s

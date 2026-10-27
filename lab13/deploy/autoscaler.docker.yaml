@@ -1,0 +1,26 @@
+# Автомасштабировщик в compose: добавочные агенты — контейнеры через /var/run/docker.sock.
+# Сервис autoscaler в compose.yaml монтирует сокет и этот файл (/app/deploy/autoscaler.docker.yaml);
+# роли берутся из образа (/app/roles), поэтому binds не нужны.
+backend: docker
+interval: 2s
+status_port: 8090
+nats_url: nats://nats:4222
+docker:
+  socket: /var/run/docker.sock
+  image: mas-agent:latest          # образ агента: compose.yaml собирает его из deploy/agent.Dockerfile (image: mas-agent:latest)
+  network: mas_default             # сеть compose: networks.default.name в compose.yaml (проект name: mas)
+  agent_bin: /app/agent            # бинарник агента внутри образа
+  stop_timeout: 15s
+  env:
+    NATS_URL: nats://nats:4222
+    REDIS_URL: redis://redis:6379/0
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+    LOG_LEVEL: info
+steps:
+  - step: triage
+    role: roles/triage.md                   # путь на хосте/в контейнере автомасштабировщика (рабочий каталог /app)
+    container_role: /app/roles/triage.md    # путь роли внутри запускаемого контейнера агента
+    per_instance: 5
+    min: 1
+    max: 3
+    cooldown: 30s

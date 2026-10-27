@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import live_table, pager as render_pager %}
+{% block title %}Журнал{% endblock %}
+{% block content %}
+<h1>Журнал событий</h1>
+
+<form method="get" action="/events" class="filters">
+  <label>Источник
+    <select name="source">
+      <option value="">все</option>
+      {% for s in sources %}<option value="{{ s }}" {% if s == source %}selected{% endif %}>{{ s }}</option>{% endfor %}
+      {% if source and source not in sources %}<option value="{{ source }}" selected>{{ source }}</option>{% endif %}
+    </select>
+  </label>
+  <label>Действие
+    <select name="action">
+      <option value="">все</option>
+      {% for code, label in actions %}
+      <option value="{{ code }}" {% if code == action %}selected{% endif %}>{{ code }} — {{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit">Показать</button>
+</form>
+
+{{ live_table("events-table", "/api/events?" ~ live_query, "items", [
+  {"field": "ts_fmt", "title": "Время (UTC)"},
+  {"field": "source", "title": "Источник"},
+  {"field": "action_label", "title": "Действие"},
+  {"field": "step_label", "title": "Шаг"},
+  {"field": "run_short", "title": "Запуск", "link_prefix": "/runs/", "link_field": "run_id"},
+  {"field": "summary", "title": "Подробности"},
+], events, "Событий не найдено") }}
+{{ render_pager(pager) }}
+
+<section>
+  <h2>Уведомления пациентам</h2>
+  <p class="note">Сообщения из <code>notify.patient</code> (имитация SMS).</p>
+  {{ live_table("notify-table", "/api/notifications?limit=20", "items", [
+    {"field": "ts_fmt", "title": "Время (UTC)"},
+    {"field": "run_short", "title": "Запуск", "link_prefix": "/runs/", "link_field": "run_id"},
+    {"field": "summary", "title": "Сообщение"},
+  ], notifications, "Уведомлений пока нет") }}
+</section>
+{% endblock %}
