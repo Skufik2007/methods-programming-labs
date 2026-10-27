@@ -1,0 +1,106 @@
+# Повышенное задание 3: сборка Rust-модуля в CI/CD и публикация на PyPI.
+#
+# - на каждый push в main собираются колёса для Linux, Windows и macOS;
+# - при push тега вида v0.1.0 собранные колёса и sdist публикуются на PyPI.
+#
+# Публикация использует Trusted Publishing (OIDC) — токены в секретах не хранятся.
+# Однократная настройка на стороне PyPI описана в README.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Тег v1.2.3 должен совпадать с версией в pyproject.toml и Cargo.toml,
+  # иначе на PyPI уйдёт пакет не с той версией. На ветке main проверка пропускается.
+  check-version:
+    name: Проверка версии
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Сверить тег с версиями пакета
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          py=$(python3 -c "import tomllib; print(tomllib.load(open('rust/fastmath/pyproject.toml','rb'))['project']['version'])")
+          rs=$(python3 -c "import tomllib; print(tomllib.load(open('rust/fastmath/Cargo.toml','rb'))['package']['version'])")
+          echo "tag=$tag pyproject=$py cargo=$rs"
+          if [ "$tag" != "$py" ] || [ "$tag" != "$rs" ]; then
+            echo "::error::Версия тега ($tag) не совпадает с pyproject.toml ($py) / Cargo.toml ($rs)"
+            exit 1
+          fi
+
+  # Колёса собираются и на push в main: это проверка, что релиз соберётся на всех
+  # трёх ОС до того, как будет поставлен тег. Публикуются они только по тегу.
+  wheels:
+    name: Колёса ${{ matrix.os }}
+    needs: check-version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Сборка колеса (abi3 — одно колесо для Python 3.9+)
+        uses: PyO3/maturin-action@v1
+        with:
+          working-directory: rust/fastmath
+          args: --release --out dist
+          manylinux: auto
+
+      - name: Проверка установки колеса
+        shell: bash
+        run: |
+          pip install --no-index --find-links rust/fastmath/dist fastmath-chetverikov
+          python -c "import fastmath; assert fastmath.sum_squares([1,2,3,4,5]) == 55; print('ok', fastmath.count_primes(10**6))"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wheels-${{ matrix.os }}
+          path: rust/fastmath/dist
+
+  sdist:
+    name: Исходный архив
+    needs: check-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          working-directory: rust/fastmath
+          args: --out dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sdist
+          path: rust/fastmath/dist
+
+  publish:
+    name: Публикация на PyPI
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [wheels, sdist]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/fastmath-chetverikov
+    permissions:
+      id-token: write # нужен для Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,0 +1,26 @@
+[package]
+name = "fastmath"
+version = "0.1.0"
+edition = "2021"
+description = "Быстрые математические функции на Rust для Python (PyO3 + Maturin)"
+license = "MIT"
+# Запрещает только публикацию крейта на crates.io. Python-пакет на PyPI
+# публикует maturin по pyproject.toml, этот флаг на него не влияет.
+publish = false
+
+[lib]
+name = "fastmath"
+# cdylib — динамическая библиотека для Python, rlib — чтобы работал `cargo test`.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.25", features = ["abi3-py39"] }
+
+[features]
+# Включается maturin при сборке колеса (см. pyproject.toml), а не при `cargo test`,
+# иначе тестовый бинарник не слинкуется с libpython на Linux/macOS.
+extension-module = ["pyo3/extension-module"]
+
+[profile.release]
+lto = true
+codegen-units = 1

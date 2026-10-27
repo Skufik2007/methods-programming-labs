@@ -1,0 +1,20 @@
+# Go
+/bin/
+
+# Rust
+target/
+rust/fastmath/dist/
+Cargo.lock.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.venv/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/

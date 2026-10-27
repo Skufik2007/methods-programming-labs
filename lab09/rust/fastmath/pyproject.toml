@@ -1,0 +1,21 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+# Имя дистрибутива на PyPI должно быть уникальным; импортируется модуль как `fastmath`.
+name = "fastmath-chetverikov"
+version = "0.1.0"
+description = "Быстрые математические функции на Rust для Python (PyO3 + Maturin), ЛР №9"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Четвериков Михаил Михайлович" }]
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+
+[tool.maturin]
+module-name = "fastmath"
+features = ["extension-module"]

@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Тесты (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.mod
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust/fastmath
+
+      - name: Линтеры (gofmt, go vet, rustfmt, clippy)
+        if: runner.os == 'Linux'
+        run: |
+          test -z "$(gofmt -l go)" || { gofmt -l go; exit 1; }
+          (cd go && go vet ./...)
+          (cd rust/fastmath && cargo fmt --check && cargo clippy --all-targets -- -D warnings)
+
+      - name: Go — тесты с детектором гонок
+        working-directory: go
+        run: go test -race ./...
+        if: runner.os == 'Linux'
+
+      - name: Go — тесты
+        working-directory: go
+        run: go test ./...
+        if: runner.os != 'Linux'
+
+      - name: Rust — тесты
+        working-directory: rust/fastmath
+        run: cargo test
+
+      - name: Сборка колеса Maturin и установка
+        shell: bash
+        run: |
+          pip install maturin
+          maturin build --release -m rust/fastmath/Cargo.toml -o dist
+          pip install --no-index --find-links dist fastmath-chetverikov
+
+      - name: Интеграционные тесты Python
+        run: python -m unittest discover -s tests -v
