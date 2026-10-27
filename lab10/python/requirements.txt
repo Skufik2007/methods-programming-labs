@@ -1,0 +1,5 @@
+# Зафиксированные версии для воспроизводимой сборки (Docker, CI).
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+httpx==0.28.1
+pyjwt[crypto]==2.15.1

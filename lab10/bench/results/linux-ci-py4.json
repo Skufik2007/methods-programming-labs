@@ -1,0 +1,123 @@
+{
+  "started_at": "2026-10-09T21:55:47+00:00",
+  "environment": {
+    "ОС": "Linux 6.17.0-1022-azure",
+    "CPU": "4 логических ядер",
+    "Go": "go1.27.1",
+    "Python": "3.12.15"
+  },
+  "params": {
+    "duration_s": 5.0,
+    "concurrency": [
+      16,
+      64
+    ],
+    "py_workers": 4
+  },
+  "runs": [
+    {
+      "scenario": "GET /ping",
+      "concurrency": 16,
+      "service": "Gin (Go)",
+      "rps": 27465.958411035135,
+      "p50_ms": 0.48,
+      "p99_ms": 2.515,
+      "errors": 0,
+      "non_2xx": 0,
+      "peak_rss_mb": 27.484375
+    },
+    {
+      "scenario": "GET /ping",
+      "concurrency": 16,
+      "service": "FastAPI (Python, 4 воркера)",
+      "rps": 9284.207840697278,
+      "p50_ms": 1.559,
+      "p99_ms": 4.653,
+      "errors": 0,
+      "non_2xx": 0,
+      "peak_rss_mb": 297.62109375
+    },
+    {
+      "scenario": "GET /ping",
+      "concurrency": 64,
+      "service": "Gin (Go)",
+      "rps": 31781.83089097278,
+      "p50_ms": 1.518,
+      "p99_ms": 8.094,
+      "errors": 0,
+      "non_2xx": 0,
+      "peak_rss_mb": 27.4375
+    },
+    {
+      "scenario": "GET /ping",
+      "concurrency": 64,
+      "service": "FastAPI (Python, 4 воркера)",
+      "rps": 9831.007928777079,
+      "p50_ms": 5.488,
+      "p99_ms": 19.454,
+      "errors": 0,
+      "non_2xx": 0,
+      "peak_rss_mb": 298.203125
+    },
+    {
+      "scenario": "POST /api/v1/orders/validate",
+      "concurrency": 16,
+      "service": "Gin (Go)",
+      "rps": 19399.81030275322,
+      "p50_ms": 0.716,
+      "p99_ms": 2.834,
+      "errors": 0,
+      "non_2xx": 0,
+      "peak_rss_mb": 27.25
+    },
+    {
+      "scenario": "POST /api/v1/orders/validate",
+      "concurrency": 16,
+      "service": "FastAPI (Python, 4 воркера)",
+      "rps": 6359.953681087138,
+      "p50_ms": 2.291,
+      "p99_ms": 6.425,
+      "errors": 0,
+      "non_2xx": 0,
+      "peak_rss_mb": 298.4453125
+    },
+    {
+      "scenario": "POST /api/v1/orders/validate",
+      "concurrency": 64,
+      "service": "Gin (Go)",
+      "rps": 20988.374809436675,
+      "p50_ms": 2.41,
+      "p99_ms": 11.496,
+      "errors": 0,
+      "non_2xx": 0,
+      "peak_rss_mb": 27.74609375
+    },
+    {
+      "scenario": "POST /api/v1/orders/validate",
+      "concurrency": 64,
+      "service": "FastAPI (Python, 4 воркера)",
+      "rps": 6669.652749113993,
+      "p50_ms": 9.147,
+      "p99_ms": 21.884,
+      "errors": 0,
+      "non_2xx": 0,
+      "peak_rss_mb": 298.890625
+    }
+  ],
+  "memory": {
+    "Gin (Go)": {
+      "idle": 20.25390625,
+      "idle_uss": 18.7890625,
+      "peak": 27.74609375,
+      "after": 27.34375,
+      "after_uss": 25.87890625
+    },
+    "FastAPI (Python, 4 воркера)": {
+      "idle": 296.70703125,
+      "idle_uss": 182.2890625,
+      "peak": 298.890625,
+      "after": 298.890625,
+      "after_uss": 183.89453125
+    }
+  }
+}

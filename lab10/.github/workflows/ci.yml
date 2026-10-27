@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go — линтеры и тесты
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go vet ./...
+      - name: Тесты с детектором гонок
+        run: go test -race -count=1 ./...
+      - name: Бенчмарки (smoke)
+        run: go test -run '^$' -bench . -benchmem -benchtime 2000x ./internal/...
+
+  python:
+    name: Python — линтеры и тесты
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7 # нужен для сквозного теста с настоящим Go-сервисом
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: python/requirements-dev.txt
+      - run: pip install -r python/requirements-dev.txt
+      - name: ruff
+        run: |
+          ruff check python bench deploy
+          ruff format --check python bench deploy
+      - name: pytest
+        working-directory: python
+        run: pytest -v
+
+  bench:
+    name: Нагрузочное сравнение (Linux)
+    needs: [go, python]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: python/requirements-dev.txt
+      - run: pip install -r python/requirements-dev.txt
+      - name: Прогон (1 процесс uvicorn и 4 процесса)
+        run: |
+          python bench/run_bench.py --duration 5 --concurrency 1 16 64 --output linux-ci
+          python bench/run_bench.py --duration 5 --concurrency 16 64 --py-workers 4 --output linux-ci-py4
+          cat bench/results/linux-ci.md bench/results/linux-ci-py4.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bench-linux
+          path: bench/results/linux-ci*
+
+  compose:
+    name: Docker Compose — сборка, сеть, graceful shutdown
+    needs: [go, python]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Сборка и запуск (ждём healthcheck обоих сервисов)
+        run: docker compose up --build --detach --wait --wait-timeout 120
+      - name: Сеть compose
+        run: |
+          docker network inspect lab10-backend --format '{{range .Containers}}{{.Name}} {{end}}'
+          docker compose exec -T py-api python -c "import socket; print('go-api ->', socket.gethostbyname('go-api'))"
+      - name: Smoke-тест
+        run: python3 deploy/smoke_test.py
+      - name: Токен остаётся действительным после перезапуска go-api
+        run: |
+          TOKEN=$(curl -sf localhost:8080/auth/login -d '{"username":"student","password":"student-pass-1"}' \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["access_token"])')
+          docker compose restart go-api
+          docker compose up --detach --wait --wait-timeout 60
+          docker compose logs go-api | grep -q 'ключ подписи JWT загружен'
+          curl -sf localhost:8080/api/v1/me -H "Authorization: Bearer $TOKEN"
+          curl -sf localhost:8000/api/v1/me -H "Authorization: Bearer $TOKEN"
+      - name: Размеры образов
+        run: |
+          echo '### Размеры образов' >> "$GITHUB_STEP_SUMMARY"
+          docker image ls --format '| {{.Repository}}:{{.Tag}} | {{.Size}} |' 'lab10-*' | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Graceful shutdown в контейнерах
+        run: |
+          # Длинный запрос не нужен: проверяем, что оба сервиса останавливаются по SIGTERM
+          # сами (до stop_grace_period), а не убиваются SIGKILL, и пишут это в лог.
+          start=$(date +%s)
+          docker compose stop
+          took=$(( $(date +%s) - start ))
+          echo "остановка заняла ${took} с"
+          docker compose logs go-api | tee go.log | tail -n 5
+          docker compose logs py-api | tee py.log | tail -n 5
+          grep -q 'graceful shutdown' go.log
+          grep -q 'сервер остановлен' go.log
+          grep -q 'graceful shutdown' py.log
+          grep -q 'ресурсы освобождены' py.log
+          test "$took" -lt 30
+      - name: Логи при ошибке
+        if: failure()
+        run: docker compose logs
+      - name: Остановка
+        if: always()
+        run: docker compose down --volumes

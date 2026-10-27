@@ -1,0 +1,15 @@
+# Общие правила для всего Python-кода репозитория (python/ и bench/).
+line-length = 120
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "ASYNC", "RUF", "DTZ", "PYI", "PLW"]
+# RUF001-003: в строках и комментариях намеренно используется кириллица.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[lint.isort]
+known-first-party = ["app"]
+
+[lint.flake8-bugbear]
+# Depends(...) в значениях по умолчанию — стандартная идиома FastAPI.
+extend-immutable-calls = ["fastapi.Depends"]

@@ -1,0 +1,57 @@
+# Оба сервиса в общей сети lab10-backend: Python обращается к Go по имени
+# сервиса go-api (встроенный DNS Docker), снаружи открыты порты 8080 и 8000.
+#
+#   docker compose up --build --wait
+#   python deploy/smoke_test.py
+#   docker compose down
+
+name: lab10
+
+services:
+  go-api:
+    build: ./go
+    image: lab10-go-api:local
+    environment:
+      ADDR: ":8080"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Ключ подписи создаётся при первом запуске и хранится в volume jwt-keys:
+      # после перезапуска go-api выданные токены остаются действительными.
+      JWT_PRIVATE_KEY_FILE: /keys/jwt.pem
+      # Демо-пользователь; в реальном развёртывании передаётся через секреты.
+      DEMO_USERS: ${DEMO_USERS:-student:student-pass-1:user}
+      # Сначала /health/ready -> 503, через 2 с закрывается слушатель.
+      DRAIN_DELAY: 2s
+      SHUTDOWN_TIMEOUT: 20s
+    ports:
+      - "8080:8080"
+    volumes:
+      - jwt-keys:/keys
+    networks: [backend]
+    # Должен быть больше DRAIN_DELAY + SHUTDOWN_TIMEOUT, иначе Docker пришлёт SIGKILL раньше.
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  py-api:
+    build: ./python
+    image: lab10-py-api:local
+    environment:
+      GO_API_URL: http://go-api:8080
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DRAIN_DELAY: "2"
+      SHUTDOWN_TIMEOUT: "20"
+    ports:
+      - "8000:8000"
+    networks: [backend]
+    depends_on:
+      go-api:
+        condition: service_healthy
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+volumes:
+  jwt-keys:
+
+networks:
+  backend:
+    name: lab10-backend
+    driver: bridge

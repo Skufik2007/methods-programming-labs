@@ -1,0 +1,10 @@
+{
+  "customer": {"name": "Иван Петров", "email": "ivan@example.com", "phone": "+79991234567"},
+  "items": [
+    {"sku": "ABC-123", "quantity": 2, "price": 199.99},
+    {"sku": "DEF-4567", "quantity": 1, "price": 50},
+    {"sku": "GHI-890123", "quantity": 5, "price": 12.5}
+  ],
+  "delivery": {"address": "Москва, ул. Пушкина, д. 1", "date": "__DATE__"},
+  "comment": "Позвонить за час до доставки"
+}

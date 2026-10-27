@@ -1,0 +1,24 @@
+# Go
+/bin/
+*.exe
+*.test
+*.out
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Результаты бенчмарков пишутся сюда при локальном запуске;
+# зафиксированные результаты лежат в bench/results/.
+/bench/tmp/
+
+# Секреты
+*.pem
+.env
+
+# IDE
+.vscode/
+.idea/
