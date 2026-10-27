@@ -10,13 +10,16 @@ from collections.abc import AsyncIterator, Iterable
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.db import dispose_engine
+from app.db import dispose_engine, get_session
 from app.errors import register_exception_handlers
 from app.routers import analytics as analytics_router
 from app.routers import appointments as appointments_router
@@ -107,6 +110,20 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         """Проверка живости сервиса (без обращения к БД)."""
         return {"status": "ok"}
+
+    @app.get("/api/health/ready", tags=["system"])
+    async def ready(session: AsyncSession = Depends(get_session)) -> JSONResponse:  # noqa: B008
+        """Готовность к приёму запросов: БД отвечает на ``SELECT 1``.
+
+        В отличие от ``/api/health`` (жив ли процесс), здесь 503, пока база недоступна:
+        оркестратор не направит трафик на экземпляр без БД. Текст ошибки драйвера наружу
+        не отдаётся — в нём бывают адрес и имя пользователя БД.
+        """
+        try:
+            await session.execute(text("SELECT 1"))
+        except (SQLAlchemyError, OSError):
+            return JSONResponse(status_code=503, content={"status": "unavailable", "database": "error"})
+        return JSONResponse(content={"status": "ok", "database": "ok"})
 
     @app.get("/", include_in_schema=False)
     async def index() -> FileResponse:
